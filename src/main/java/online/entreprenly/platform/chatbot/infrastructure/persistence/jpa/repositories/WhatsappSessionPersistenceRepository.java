@@ -1,0 +1,12 @@
+package online.entreprenly.platform.chatbot.infrastructure.persistence.jpa.repositories;
+
+import online.entreprenly.platform.chatbot.infrastructure.persistence.jpa.entities.WhatsappSessionPersistenceEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+
+@Repository
+public interface WhatsappSessionPersistenceRepository extends JpaRepository<WhatsappSessionPersistenceEntity, Long> {
+
+    java.util.List<WhatsappSessionPersistenceEntity> findBySellerIdOrderByIdDesc(Long sellerId);
+}
