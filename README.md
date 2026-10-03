@@ -6,7 +6,7 @@ RESTful API backend for the Entreprenly application, built with **Domain-Driven 
 
 - **Language:** Java 26
 - **Framework:** Spring Boot 4.0.6
-- **Database:** PostgreSQL 15+ (Google Cloud SQL in production)
+- **Database:** PostgreSQL 15+ (Supabase in production)
 - **Build:** Maven (via the included Maven Wrapper)
 - **Security:** Spring Security with JWT (BCrypt password hashing)
 - **Documentation:** SpringDoc OpenAPI (Swagger UI)
@@ -54,7 +54,7 @@ createdb daop-entreprenly
 # Build a runnable jar
 ./mvnw clean package
 
-# Run with Docker (prod profile)
+# Run with Docker (see the Deployment section for the profile and variables)
 docker build -t entreprenly-platform .
 docker run --env-file .env -p 8092:8092 entreprenly-platform
 ```
@@ -64,13 +64,34 @@ The API is served under `/api/v1` and Swagger UI is available at
 
 ## Deployment
 
-### Option A: Render + Supabase (free tier, no Google Cloud)
+The backend runs on **Render** (Docker web service) and stores its data in **Supabase**
+(managed PostgreSQL).
+
+| | |
+|---|---|
+| API | https://adm-entreprenly-backend.onrender.com |
+| Swagger UI | https://adm-entreprenly-backend.onrender.com/swagger-ui.html |
+| Deployed branch | `develop` |
+| Spring profile | `cloud` (see `application-cloud.properties`) |
+
+### How a deploy happens
+
+Every push to `develop` runs the **Deploy to Render** GitHub Actions workflow
+(`.github/workflows/render-deploy.yml`), which calls the service's Render Deploy Hook. Render then
+builds the `Dockerfile` and replaces the running instance. The hook URL is stored in the repository
+secret `RENDER_DEPLOY_HOOK`. A deploy can also be started by hand from the Render dashboard
+(*Manual Deploy*).
+
+The tables are created automatically on startup (`spring.jpa.hibernate.ddl-auto=update`), so there
+are no manual migrations.
+
+### Setting it up from scratch
 
 1. **Supabase**: create a project, then open *Connect* and copy the **Session pooler**
    details (host `aws-0-<region>.pooler.supabase.com`, port `5432`, user `postgres.<project-ref>`,
-   database `postgres`). The tables are created automatically on first start.
-2. **Render**: create a *Web Service* from this GitHub repository, runtime **Docker**, and set
-   these environment variables:
+   database `postgres`). Use the pooler, not the direct connection: Render's free tier only has IPv4.
+2. **Render**: create a *Web Service* from this GitHub repository (branch `develop`, runtime
+   **Docker**) and set these environment variables:
 
    | Variable | Value |
    |---|---|
@@ -83,26 +104,23 @@ The API is served under `/api/v1` and Swagger UI is available at
    | `JWT_SECRET` | a long random string |
    | `PUBLIC_API_URL` | the Render URL (shown in Swagger UI) |
 
-3. Open `https://<service>.onrender.com/swagger-ui.html` to verify.
+3. **GitHub**: copy the service's *Deploy Hook* URL (Render > Settings) into a repository secret
+   named `RENDER_DEPLOY_HOOK` (Settings > Secrets and variables > Actions).
+4. Open `/swagger-ui.html` on the service URL to verify.
 
-The free Render tier sleeps after ~15 minutes without traffic; the first request afterwards can
-take about a minute, so open Swagger UI before a demo.
+### Free tier notes
 
-### Option B: Google Cloud Run + Cloud SQL
+- Render's free instance sleeps after ~15 minutes without traffic; the first request afterwards
+  can take about a minute. Open Swagger UI before a demo to wake it up.
+- During a deploy the API is unavailable for a few minutes.
+- Never commit database passwords, `JWT_SECRET` or the deploy hook URL.
 
-The service can be deployed to **Google Cloud Run**. A Cloud Build trigger builds the
-container from the `Dockerfile` and rolls out a new revision automatically on every
-push to `main` (no manual steps required).
+### Alternative: Google Cloud Run + Cloud SQL (not in use)
 
-In production the app connects to **Cloud SQL (PostgreSQL)** through the Cloud SQL Java
-socket factory, so no public IP or host/port is configured. The Cloud Run service
-is set up with:
-
-- Environment variables: `SPRING_PROFILES_ACTIVE=prod`, `CLOUD_SQL_CONNECTION_NAME`
-  (`project:region:instance`), `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`,
-  `JWT_SECRET`.
-- The Cloud SQL instance attached to the service, and the runtime service account
-  granted the `roles/cloudsql.client` role.
+The `prod` profile connects to **Cloud SQL** through the Cloud SQL Java socket factory and is meant
+for Google Cloud Run (`SPRING_PROFILES_ACTIVE=prod`, `CLOUD_SQL_CONNECTION_NAME`, `DATABASE_NAME`,
+`DATABASE_USER`, `DATABASE_PASSWORD`, `JWT_SECRET`). It is kept for reference but the project is
+currently deployed on Render + Supabase.
 
 ## License
 
