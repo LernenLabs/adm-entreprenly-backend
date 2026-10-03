@@ -25,6 +25,9 @@ public record ProfileResource(
     @Schema(description = "Avatar URL", example = "https://cdn.entreprenly.online/avatars/1.png", nullable = true)
     String avatarUrl,
 
+    @Schema(description = "Short biography", example = "Owner of Bodega La Esquina", nullable = true)
+    String biography,
+
     @Schema(description = "Display role", example = "Administrador")
     String role,
 

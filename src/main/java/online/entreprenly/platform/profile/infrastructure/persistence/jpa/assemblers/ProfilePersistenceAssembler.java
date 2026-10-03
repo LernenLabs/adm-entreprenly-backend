@@ -35,6 +35,7 @@ public final class ProfilePersistenceAssembler {
                 entity.getLastName(),
                 entity.getPhone(),
                 entity.getAvatarUrl(),
+                entity.getBiography(),
                 entity.getRole(),
                 entity.getPlan(),
                 preferences,
@@ -53,6 +54,7 @@ public final class ProfilePersistenceAssembler {
         entity.setLastName(profile.getLastName());
         entity.setPhone(profile.getPhone());
         entity.setAvatarUrl(profile.getAvatarUrl());
+        entity.setBiography(profile.getBiography());
         entity.setRole(profile.getRole());
         entity.setPlan(profile.getPlan());
         var prefs = profile.getPreferences() == null ? Preferences.defaults() : profile.getPreferences();

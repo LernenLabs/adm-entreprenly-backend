@@ -30,6 +30,7 @@ public class ProfileResourceFromEntityAssembler {
                 profile.getLastName(),
                 profile.getPhone(),
                 profile.getAvatarUrl(),
+                profile.getBiography(),
                 profile.getRole(),
                 profile.getPlan(),
                 preferences,

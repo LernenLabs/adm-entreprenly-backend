@@ -22,6 +22,7 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
     private String lastName;
     private String phone;
     private String avatarUrl;
+    private String biography;
     private String role;
     private String plan;
     private Preferences preferences;
@@ -53,13 +54,16 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
      * @param lastName  new last name
      * @param phone     new phone number (nullable)
      * @param avatarUrl new avatar URL (nullable)
+     * @param biography new short biography (nullable)
      * @return this profile
      */
-    public Profile updateProfile(String firstName, String lastName, String phone, String avatarUrl) {
+    public Profile updateProfile(String firstName, String lastName, String phone, String avatarUrl,
+                                 String biography) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.phone = phone;
         this.avatarUrl = avatarUrl;
+        this.biography = biography;
         return this;
     }
 
@@ -101,7 +105,8 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
      * a profile that already carries identity and full state.
      */
     public void restoreState(Long id, Long userId, String firstName, String lastName, String phone,
-                             String avatarUrl, String role, String plan, Preferences preferences,
+                             String avatarUrl, String biography, String role, String plan,
+                             Preferences preferences,
                              NotificationSettings notificationSettings) {
         this.id = id;
         this.userId = userId;
@@ -109,6 +114,7 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
         this.lastName = lastName;
         this.phone = phone;
         this.avatarUrl = avatarUrl;
+        this.biography = biography;
         this.role = role;
         this.plan = plan;
         this.preferences = preferences;

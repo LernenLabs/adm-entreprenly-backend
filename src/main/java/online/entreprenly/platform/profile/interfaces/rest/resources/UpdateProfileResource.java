@@ -25,6 +25,10 @@ public record UpdateProfileResource(
 
     @Schema(description = "Avatar as a URL or base64 data URI", nullable = true)
     @Size(max = 8_000_000)
-    String avatarUrl
+    String avatarUrl,
+
+    @Schema(description = "Short biography", example = "Owner of Bodega La Esquina", nullable = true)
+    @Size(max = 500)
+    String biography
 ) {
 }
