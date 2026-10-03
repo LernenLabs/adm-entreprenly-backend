@@ -36,6 +36,9 @@ public class ProfilePersistenceEntity extends AuditableAbstractPersistenceEntity
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
+    @Column(name = "biography", length = 500)
+    private String biography;
+
     @Column(name = "role", length = 60)
     private String role;
 

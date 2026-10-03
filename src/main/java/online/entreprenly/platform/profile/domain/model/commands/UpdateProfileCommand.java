@@ -8,6 +8,8 @@ package online.entreprenly.platform.profile.domain.model.commands;
  * @param lastName  the new last name
  * @param phone     the new phone number (nullable)
  * @param avatarUrl the new avatar URL (nullable)
+ * @param biography the new short biography (nullable)
  */
-public record UpdateProfileCommand(Long profileId, String firstName, String lastName, String phone, String avatarUrl) {
+public record UpdateProfileCommand(Long profileId, String firstName, String lastName, String phone, String avatarUrl,
+                                   String biography) {
 }

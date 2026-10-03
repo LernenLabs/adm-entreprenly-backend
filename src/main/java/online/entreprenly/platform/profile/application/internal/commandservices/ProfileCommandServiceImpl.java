@@ -40,7 +40,8 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     public Result<Profile, ApplicationError> handle(UpdateProfileCommand command) {
         return profileRepository.findById(command.profileId())
                 .<Result<Profile, ApplicationError>>map(profile -> {
-                    profile.updateProfile(command.firstName(), command.lastName(), command.phone(), command.avatarUrl());
+                    profile.updateProfile(command.firstName(), command.lastName(), command.phone(), command.avatarUrl(),
+                            command.biography());
                     return Result.success(profileRepository.save(profile));
                 })
                 .orElseGet(() -> Result.failure(ApplicationError.notFound("Profile", String.valueOf(command.profileId()))));
