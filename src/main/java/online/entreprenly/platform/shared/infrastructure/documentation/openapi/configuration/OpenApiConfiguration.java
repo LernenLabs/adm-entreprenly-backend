@@ -29,6 +29,9 @@ public class OpenApiConfiguration {
     @Value("${documentation.application.version}")
     String applicationVersion;
 
+    @Value("${documentation.server.url:https://daop-api.entreprenly.online}")
+    String serverUrl;
+
     // Methods
 
     /**
@@ -59,8 +62,8 @@ public class OpenApiConfiguration {
                         .url("http://localhost:8092")
                         .description("Local Development Environment"),
                 new Server()
-                        .url("https://daop-api.entreprenly.online")
-                        .description("Production Environment")
+                        .url(serverUrl)
+                        .description("Deployed Environment")
         ));
 
         // Add a security scheme
