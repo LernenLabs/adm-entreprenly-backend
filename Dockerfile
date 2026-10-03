@@ -23,7 +23,8 @@ COPY --from=build /app/target/*.jar app.jar
 
 # Step 3: Configure and run the application
 EXPOSE 8092
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# MaxRAMPercentage: the JVM default (25%) is too small for 512 MB free-tier containers.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
 
 # Environment variables required by the 'prod' profile (define them in the hosting provider):
 # - CLOUD_SQL_CONNECTION_NAME  Cloud SQL instance connection name (project:region:instance).
@@ -33,6 +34,11 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # - JWT_SECRET         Secret used to sign JWT tokens.
 # - PORT               Port the application listens on (default 8092).
 # - SPRING_PROFILES_ACTIVE  Active Spring profile (must be 'prod' for runtime configuration).
+#
+# Alternative 'cloud' profile (Render + Supabase or any managed PostgreSQL): override
+# SPRING_PROFILES_ACTIVE=cloud in the hosting provider (environment variables take precedence over
+# the ENV above) and define DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER,
+# DATABASE_PASSWORD, JWT_SECRET and PUBLIC_API_URL. See application-cloud.properties.
 #
 # In production the app connects to Cloud SQL through the Java socket factory, so the
 # host/port are not used; the instance is identified by CLOUD_SQL_CONNECTION_NAME.
