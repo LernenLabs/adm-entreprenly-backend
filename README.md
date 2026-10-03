@@ -64,7 +64,33 @@ The API is served under `/api/v1` and Swagger UI is available at
 
 ## Deployment
 
-The service is deployed to **Google Cloud Run**. A Cloud Build trigger builds the
+### Option A: Render + Supabase (free tier, no Google Cloud)
+
+1. **Supabase**: create a project, then open *Connect* and copy the **Session pooler**
+   details (host `aws-0-<region>.pooler.supabase.com`, port `5432`, user `postgres.<project-ref>`,
+   database `postgres`). The tables are created automatically on first start.
+2. **Render**: create a *Web Service* from this GitHub repository, runtime **Docker**, and set
+   these environment variables:
+
+   | Variable | Value |
+   |---|---|
+   | `SPRING_PROFILES_ACTIVE` | `cloud` |
+   | `DATABASE_HOST` | Supabase pooler host |
+   | `DATABASE_PORT` | `5432` |
+   | `DATABASE_NAME` | `postgres` |
+   | `DATABASE_USER` | `postgres.<project-ref>` |
+   | `DATABASE_PASSWORD` | your Supabase database password |
+   | `JWT_SECRET` | a long random string |
+   | `PUBLIC_API_URL` | the Render URL (shown in Swagger UI) |
+
+3. Open `https://<service>.onrender.com/swagger-ui.html` to verify.
+
+The free Render tier sleeps after ~15 minutes without traffic; the first request afterwards can
+take about a minute, so open Swagger UI before a demo.
+
+### Option B: Google Cloud Run + Cloud SQL
+
+The service can be deployed to **Google Cloud Run**. A Cloud Build trigger builds the
 container from the `Dockerfile` and rolls out a new revision automatically on every
 push to `main` (no manual steps required).
 
