@@ -9,6 +9,7 @@ import online.entreprenly.platform.profile.interfaces.rest.resources.UpdateProfi
  */
 public class UpdateProfileCommandFromResourceAssembler {
     public static UpdateProfileCommand toCommandFromResource(Long profileId, UpdateProfileResource resource) {
-        return new UpdateProfileCommand(profileId, resource.firstName(), resource.lastName(), resource.phone(), resource.avatarUrl());
+        return new UpdateProfileCommand(profileId, resource.firstName(), resource.lastName(), resource.phone(),
+                resource.avatarUrl(), resource.biography());
     }
 }
