@@ -16,6 +16,6 @@ public record Preferences(String language, String timezone, String theme, String
      * @return default preferences
      */
     public static Preferences defaults() {
-        return new Preferences("en", "UTC", "light", "USD");
+        return new Preferences("en", "UTC", "light", "PEN");
     }
 }
