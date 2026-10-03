@@ -1,0 +1,24 @@
+name: Deploy to Render
+
+# Render is not receiving GitHub push webhooks for this service, so we trigger its Deploy Hook
+# ourselves. Add the hook URL (Render > service > Settings > Deploy Hook) as the repository
+# secret RENDER_DEPLOY_HOOK. Without the secret this workflow does nothing.
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK is not set; skipping deploy."
+            exit 0
+          fi
+          curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK"
+          echo "Deploy requested for ${GITHUB_SHA}."
