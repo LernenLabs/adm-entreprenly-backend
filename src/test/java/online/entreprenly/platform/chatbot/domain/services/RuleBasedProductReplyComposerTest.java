@@ -79,4 +79,51 @@ class RuleBasedProductReplyComposerTest {
         assertThat(reply).isPresent();
         assertThat(reply.get()).containsIgnoringCase("no contamos con productos");
     }
+
+    private static final List<CatalogProduct> STORE = List.of(
+            new CatalogProduct("Galletas Oreo", 2.50, false, 20.0),
+            new CatalogProduct("Coca Cola 500ml", 3.50, false, 10.0),
+            new CatalogProduct("Platano de Seda", 3.00, true, 15.0),
+            new CatalogProduct("Sprite 500ml", 3.00, false, 8.0),
+            new CatalogProduct("Pan", 0.50, false, 30.0));
+
+    @Test
+    @DisplayName("understands plurals, names written together and small typos")
+    void understandsHowClientsActuallyWrite() {
+        var oreos = composer.detectOrder("quiero 2 oreos", STORE).orElseThrow();
+        assertThat(oreos.productName()).isEqualTo("Galletas Oreo");
+        assertThat(oreos.quantity()).isEqualTo(2);
+
+        var cocas = composer.detectOrder("dame 3 cocacolas porfa", STORE).orElseThrow();
+        assertThat(cocas.productName()).isEqualTo("Coca Cola 500ml");
+        assertThat(cocas.quantity()).isEqualTo(3);
+
+        assertThat(composer.detectOrder("quiero 2 kilos de platanos", STORE).orElseThrow().productName())
+                .isEqualTo("Platano de Seda");
+        assertThat(composer.matchProduct("tienen sprit?", STORE).orElseThrow().name()).isEqualTo("Sprite 500ml");
+        assertThat(composer.detectOrder("media docena de galletas oreo", STORE).orElseThrow().quantity()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("does not turn a product it does not sell into the previously discussed one")
+    void unknownProductIsNotReadAsTheContextProduct() {
+        var coca = STORE.get(1);
+        assertThat(composer.detectOrder("quiero un sporade", STORE, coca)).isEmpty();
+        assertThat(composer.compose("quiero un sporade", STORE).orElseThrow())
+                .contains("No contamos con sporade").contains("Galletas Oreo");
+
+        // A bare quantity still refers to the product being discussed.
+        var more = composer.detectOrder("dame dos", STORE, coca).orElseThrow();
+        assertThat(more.productName()).isEqualTo("Coca Cola 500ml");
+        assertThat(more.quantity()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("leaves order status, payment and unrelated chat to the generic responder")
+    void ignoresNonProductMessages() {
+        assertThat(composer.compose("donde esta mi pedido", STORE)).isEmpty();
+        assertThat(composer.compose("ya te yapee", STORE)).isEmpty();
+        assertThat(composer.compose("me voy a la playa", STORE)).isEmpty();
+        assertThat(composer.compose("q tienes?", STORE).orElseThrow()).startsWith("Tenemos disponible");
+    }
 }

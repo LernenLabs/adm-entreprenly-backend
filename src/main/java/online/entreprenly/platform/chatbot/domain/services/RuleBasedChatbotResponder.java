@@ -21,14 +21,17 @@ public class RuleBasedChatbotResponder implements ChatbotResponder {
         
         if (phrase(text, "como pago", "como puedo pagar", "formas de pago", "metodos de pago",
                 "medios de pago", "forma de pago", "metodo de pago", "aceptan yape", "aceptan plin",
-                "aceptan tarjeta", "aceptan transferencia", "puedo pagar con")) {
+                "aceptan tarjeta", "aceptan transferencia", "puedo pagar con", "pago con yape", "pago con plin",
+                "puedo yapear", "se puede yapear", "numero de yape", "numero para yapear", "a que numero",
+                "pago contra entrega", "pago en efectivo", "aceptan efectivo")) {
             return "Aceptamos Yape, Plin, transferencia bancaria y efectivo contra entrega. "
                     + "Cuando tengas tu pedido listo, envíame la captura del pago por aquí y lo validamos.";
         }
 
         
         if (phrase(text, "comprobante", "ya pague", "ya pagué", "envie el pago", "envio el pago",
-                "mi pago", "hice el pago", "hice la transferencia", "adjunto")) {
+                "mi pago", "hice el pago", "hice la transferencia", "adjunto", "ya te pague", "te yapee",
+                "ya yapee", "te plinee", "ya plinee", "ya transferi", "te transferi", "ahi va el pago")) {
             return "Perfecto, envíame la captura o foto de tu comprobante por aquí y validamos tu pedido enseguida.";
         }
 
@@ -97,33 +100,34 @@ public class RuleBasedChatbotResponder implements ChatbotResponder {
         }
 
         
-        if (phrase(text, "pedido", "quiero", "quisiera", "comprar", "ordenar", "pedir", "necesito",
-                "llevar", "me gustaria", "adquirir")) {
+        if (phrase(text, "pedido", "quiero", "kiero", "quisiera", "comprar", "ordenar", "pedir", "necesito",
+                "llevar", "me gustaria", "adquirir", "dame", "deme")) {
             return "Perfecto, registro tu pedido. Indícame los productos, cantidades y tu dirección de entrega.";
         }
 
         
-        if (phrase(text, "gracias", "muchas gracias", "mil gracias", "te agradezco")) {
+        if (phrase(text, "gracias", "muchas gracias", "mil gracias", "te agradezco", "grax", "grcs", "gracia")) {
             return "¡A ti%s! Quedo atento para cualquier otro pedido.".formatted(name);
         }
 
         
         if (phrase(text, "adios", "hasta luego", "nos vemos", "chau", "hasta pronto", "buen dia",
-                "bye")) {
+                "bye", "chao", "cuidate")) {
             return "¡Gracias por escribirnos%s! Que tengas un excelente día. Aquí estaré para tu próximo pedido.".formatted(name);
         }
 
         
         if (phrase(text, "hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
-                "hey", "saludos", "que tal", "alo")) {
+                "hey", "saludos", "que tal", "alo", "ola", "holi", "holis", "wenas", "buen dia")) {
             return "Hola%s, bienvenido a la tienda. ¿Qué te gustaría pedir hoy?".formatted(name);
         }
 
         
-        if (hasWord(words, "si", "claro", "dale", "ok", "okay", "listo", "perfecto", "correcto", "afirmativo")) {
+        if (hasWord(words, "si", "sip", "sii", "claro", "dale", "ok", "oki", "okey", "okay", "listo", "perfecto",
+                "correcto", "afirmativo", "ya", "va", "bueno")) {
             return "¡Genial! Cuéntame qué producto y cantidad deseas y armamos tu pedido.";
         }
-        if (hasWord(words, "no", "nada", "ninguno", "ninguna")) {
+        if (hasWord(words, "no", "nop", "nel", "nada", "ninguno", "ninguna")) {
             return "Entendido%s. Si necesitas algo más, aquí estoy para ayudarte con tu pedido.".formatted(name);
         }
 
@@ -133,13 +137,25 @@ public class RuleBasedChatbotResponder implements ChatbotResponder {
     }
 
     
+    /**
+     * Whole-word match (a trailing plural "s"/"es" allowed), so short keywords no longer fire
+     * inside other words: "alo" in "galletas", "hay" in "playa", "hey" in "they".
+     */
     private static boolean phrase(String text, String... keywords) {
         for (var keyword : keywords) {
-            if (text.contains(keyword)) {
+            if (KEYWORD_PATTERNS.computeIfAbsent(keyword, RuleBasedChatbotResponder::wholeWord).matcher(text).find()) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static final java.util.Map<String, java.util.regex.Pattern> KEYWORD_PATTERNS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static java.util.regex.Pattern wholeWord(String keyword) {
+        return java.util.regex.Pattern.compile(
+                "(?<![a-z0-9])" + java.util.regex.Pattern.quote(keyword) + "(?:e?s)?(?![a-z0-9])");
     }
 
     

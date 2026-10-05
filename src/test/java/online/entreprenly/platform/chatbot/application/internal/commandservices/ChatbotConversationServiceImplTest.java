@@ -166,4 +166,30 @@ class ChatbotConversationServiceImplTest {
         assertThat(order.isHasReceipt()).isTrue();
         assertThat(order.getReceiptImage()).isEqualTo("data:image/png;base64,AAA");
     }
+
+    @Test
+    @DisplayName("does not take a question or another product request as the delivery address")
+    void onlyAcceptsAnAddressAsTheAddress() {
+        ProductCatalogService catalog = ownerEmail -> "seller@test.com".equals(ownerEmail)
+                ? List.of(new CatalogProduct("Coca Cola", 3.00, false, 10.0))
+                : List.of();
+        var service = service(catalog, new StubSellerEmailResolver(sellerId -> Optional.empty()));
+        var phone = "+51 944 000 111";
+        service.handle(new HandleInboundMessageCommand(phone, "Cliente", "quiero 3 coca cola", "seller@test.com"));
+        var convId = conversations.findByClientPhone(phone).orElseThrow().getId();
+
+        var otherProduct = service.handle(new HandleInboundMessageCommand(phone, "Cliente", "quiero un sporade", "seller@test.com"));
+        assertThat(otherProduct.toOptional().orElseThrow().getContent()).contains("No contamos con sporade");
+
+        var question = service.handle(new HandleInboundMessageCommand(phone, "Cliente", "cuanto demora el delivery?", "seller@test.com"));
+        assertThat(question.toOptional().orElseThrow().getContent()).doesNotContain("Registré tu pedido");
+
+        var order = orders.findByConversationId(convId).get(0);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getDeliveryAddress()).isNull();
+
+        var address = service.handle(new HandleInboundMessageCommand(phone, "Cliente", "A mi casa", "seller@test.com"));
+        assertThat(address.toOptional().orElseThrow().getContent()).contains("Registré tu pedido");
+        assertThat(orders.findByConversationId(convId).get(0).getDeliveryAddress()).isEqualTo("A mi casa");
+    }
 }
