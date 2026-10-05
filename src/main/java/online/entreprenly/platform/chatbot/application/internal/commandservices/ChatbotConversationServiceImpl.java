@@ -194,7 +194,7 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
 
         
         var pending = findPendingOrder(conversationId);
-        if (pending.isPresent() && looksLikeAddress(content)) {
+        if (pending.isPresent() && looksLikeAddress(content, catalog)) {
             lastProductByConversation.remove(conversationId);
             return confirmDelivery(conversation, pending.get(), content.trim());
         }
@@ -259,11 +259,34 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
     }
 
     
-    private boolean looksLikeAddress(String content) {
-        var text = content.trim().toLowerCase(java.util.Locale.ROOT);
-        if (text.length() < 3) {
+    /**
+     * Whether a message sent while the bot waits for the delivery address is that address.
+     * Questions, product requests and small talk are not: before, anything of three letters or
+     * more ("quiero un sporade", "cuánto cuesta") was taken as the address and closed the order.
+     */
+    private boolean looksLikeAddress(String content, List<CatalogProduct> catalog) {
+        var text = java.text.Normalizer.normalize(content.trim().toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        if (text.length() < 3 || text.contains("?")) {
             return false;
         }
-        return !text.matches("^(hola|buenas|buenos dias|buenas tardes|buenas noches|gracias|ok|si|no)\\.?$");
+        if (ADDRESS_HINT.matcher(text).find()) {
+            return true;
+        }
+        if (NOT_AN_ADDRESS.matcher(text).find() || productReplyComposer.matchProduct(content, catalog).isPresent()) {
+            return false;
+        }
+        return !text.matches("^(hola|ola|buenas|buenos dias|buenas tardes|buenas noches|gracias|ok|oki|si|sip|no|ya|listo|dale|bueno)[.!]*$");
     }
+
+    /** Words that only show up in an address ("Av.", "Jr.", "Mz B Lt 4", "Dpto 302"). */
+    private static final java.util.regex.Pattern ADDRESS_HINT = java.util.regex.Pattern.compile(
+            "\\b(av|avenida|calle|jr|jiron|psje|pasaje|mz|lt|lote|urb|urbanizacion|dpto|departamento|"
+                    + "piso|edificio|condominio|block|interior|distrito|referencia|cerca de|frente a|al costado)\\b");
+
+    /** Questions, orders and payment talk the client may send before giving the address. */
+    private static final java.util.regex.Pattern NOT_AN_ADDRESS = java.util.regex.Pattern.compile(
+            "^(que|q|cual|cuanto|cuando|como|donde|tienen|tienes|hay|precio)\\b"
+                    + "|\\b(quiero|kiero|quisiera|dame|deme|necesito|comprar|pedir|agrega|tambien|cuesta|vale|"
+                    + "cancela|cancelar|catalogo|productos|pago|pague|yape|yapee|plin|comprobante)\\b");
 }

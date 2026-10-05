@@ -29,4 +29,19 @@ class RuleBasedChatbotResponderTest {
         var reply = responder.reply("asdfghjkl", null);
         assertThat(reply).isNotBlank();
     }
+
+    @Test
+    @DisplayName("matches whole words, not fragments inside other words")
+    void matchesWholeWordsOnly() {
+        // "hay" used to fire inside "playa" and answer about stock.
+        assertThat(responder.reply("me voy a la playa", null)).doesNotContain("disponibilidad");
+    }
+
+    @Test
+    @DisplayName("understands common informal greetings and payment phrases")
+    void understandsInformalPhrases() {
+        assertThat(responder.reply("ola", "Ana")).contains("Ana").containsIgnoringCase("bienvenido");
+        assertThat(responder.reply("ya te yapee", null)).containsIgnoringCase("comprobante");
+        assertThat(responder.reply("a que numero te yapeo", null)).containsIgnoringCase("yape");
+    }
 }
