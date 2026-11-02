@@ -20,4 +20,10 @@ public interface ProductReplyComposer {
 
     
     Optional<CatalogProduct> matchProduct(String incomingContent, List<CatalogProduct> catalog);
+
+    /** The products in stock, listed one per line, ready to send. */
+    String catalogue(List<CatalogProduct> catalog);
+
+    /** Answer for a message nothing else understood, so the conversation never dead-ends. */
+    Optional<String> replyToUnknown(String incomingContent, List<CatalogProduct> catalog);
 }

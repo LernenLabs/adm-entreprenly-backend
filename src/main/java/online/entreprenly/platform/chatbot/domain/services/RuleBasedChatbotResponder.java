@@ -15,6 +15,19 @@ public class RuleBasedChatbotResponder implements ChatbotResponder {
     @Override
     public String reply(String incomingContent, String clientName) {
         var name = (clientName == null || clientName.isBlank()) ? "" : " " + clientName.trim();
+        var known = knownReply(incomingContent, clientName);
+        return known != null ? known
+                : "Gracias por tu mensaje%s. ¿Deseas hacer un pedido o conocer nuestros productos? ".formatted(name)
+                        + "Dime en qué te puedo ayudar.";
+    }
+
+    @Override
+    public boolean understands(String incomingContent) {
+        return knownReply(incomingContent, null) != null;
+    }
+
+    private String knownReply(String incomingContent, String clientName) {
+        var name = (clientName == null || clientName.isBlank()) ? "" : " " + clientName.trim();
         var text = normalize(incomingContent);
         var words = wordsOf(text);
 
@@ -132,8 +145,7 @@ public class RuleBasedChatbotResponder implements ChatbotResponder {
         }
 
         
-        return "Gracias por tu mensaje%s. ¿Deseas hacer un pedido o conocer nuestros productos? "
-                .formatted(name) + "Dime en qué te puedo ayudar.";
+        return null;
     }
 
     

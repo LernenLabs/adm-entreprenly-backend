@@ -189,7 +189,13 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
         var orderLine = productReplyComposer.detectOrder(content, catalog);
         if (orderLine.isPresent()) {
             lastProductByConversation.remove(conversationId);
-            return registerDraftOrder(conversation, orderLine.get());
+            var draftReply = registerDraftOrder(conversation, orderLine.get());
+            // "2 cocas a Av. Perú 124": the same message already says where to deliver it.
+            var address = addressIn(content);
+            var draft = findPendingOrder(conversationId);
+            return address.isPresent() && draft.isPresent()
+                    ? confirmDelivery(conversation, draft.get(), address.get())
+                    : draftReply;
         }
 
         
@@ -212,15 +218,56 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
 
         
         
+        var hasStock = catalog.stream().anyMatch(CatalogProduct::isInStock);
+        var text = normalized(content);
+
+        // A greeting opens with the catalog, so the client knows right away what can be ordered.
+        if (hasStock && pending.isEmpty() && GREETING_ONLY.matcher(text).matches()) {
+            return responder.reply(content, conversation.getClientName()) + "\n\n" + productReplyComposer.catalogue(catalog);
+        }
+
         var productReply = productReplyComposer.compose(content, catalog);
         if (productReply.isPresent()) {
             productReplyComposer.matchProduct(content, catalog)
                     .ifPresent(product -> lastProductByConversation.put(conversationId, product));
-            return productReply.get();
+            return withAddressReminder(productReply.get(), pending);
         }
 
-        
-        return responder.reply(content, conversation.getClientName());
+        // A bare "sí" has to move forward: ask for the amount or show what can be ordered.
+        if (hasStock && pending.isEmpty() && AFFIRMATIVE_ONLY.matcher(text).matches()) {
+            return context != null
+                    ? "¡Perfecto! ¿Cuántos de %s deseas?".formatted(context.name())
+                    : productReplyComposer.catalogue(catalog);
+        }
+
+        if (!responder.understands(content)) {
+            var unknown = productReplyComposer.replyToUnknown(content, catalog);
+            if (unknown.isPresent()) {
+                return withAddressReminder(unknown.get(), pending);
+            }
+        }
+        return withAddressReminder(responder.reply(content, conversation.getClientName()), pending);
+    }
+
+    /** Keeps an unfinished order in sight while the client asks about something else. */
+    private String withAddressReminder(String reply, Optional<ChatOrder> pending) {
+        return pending.map(order -> "%s\n\nTu pedido %s sigue pendiente: indícame tu dirección de entrega para continuar."
+                .formatted(reply, order.getOrderNumber())).orElse(reply);
+    }
+
+    /** The address when a message that also places an order includes one, from "Av.", "Calle"... on. */
+    private Optional<String> addressIn(String content) {
+        var text = normalized(content);
+        var matcher = ADDRESS_HINT.matcher(text);
+        // The normalized text keeps the original's positions, so the client's own spelling is kept.
+        return matcher.find() && text.length() == content.trim().length()
+                ? Optional.of(content.trim().substring(matcher.start()))
+                : Optional.empty();
+    }
+
+    private static String normalized(String content) {
+        return java.text.Normalizer.normalize(content.trim().toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
     }
 
     
@@ -265,8 +312,7 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
      * more ("quiero un sporade", "cuánto cuesta") was taken as the address and closed the order.
      */
     private boolean looksLikeAddress(String content, List<CatalogProduct> catalog) {
-        var text = java.text.Normalizer.normalize(content.trim().toLowerCase(java.util.Locale.ROOT),
-                java.text.Normalizer.Form.NFD).replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        var text = normalized(content);
         if (text.length() < 3 || text.contains("?")) {
             return false;
         }
@@ -278,6 +324,12 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
         }
         return !text.matches("^(hola|ola|buenas|buenos dias|buenas tardes|buenas noches|gracias|ok|oki|si|sip|no|ya|listo|dale|bueno)[.!]*$");
     }
+
+    private static final java.util.regex.Pattern GREETING_ONLY = java.util.regex.Pattern.compile(
+            "^((hola|ola|holi|holis|buenas|buenos|buen|dias?|tardes|noches|hey|saludos|que tal|wenas)[\\s,.!]*)+$");
+
+    private static final java.util.regex.Pattern AFFIRMATIVE_ONLY = java.util.regex.Pattern.compile(
+            "^(si|sip|sii|claro|dale|ok|oki|okey|okay|ya|va|bueno|perfecto|de acuerdo)[\\s,.!]*$");
 
     /** Words that only show up in an address ("Av.", "Jr.", "Mz B Lt 4", "Dpto 302"). */
     private static final java.util.regex.Pattern ADDRESS_HINT = java.util.regex.Pattern.compile(
