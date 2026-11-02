@@ -126,4 +126,57 @@ class RuleBasedProductReplyComposerTest {
         assertThat(composer.compose("me voy a la playa", STORE)).isEmpty();
         assertThat(composer.compose("q tienes?", STORE).orElseThrow()).startsWith("Tenemos disponible");
     }
+
+    private static final List<CatalogProduct> SHOP = List.of(
+            new CatalogProduct("Coca-Cola 500ml", 3.50, false, 10.0),
+            new CatalogProduct("Leche Gloria Entera", 4.20, false, 30.0),
+            new CatalogProduct("Leche Gloria 2L", 6.00, false, 12.0),
+            new CatalogProduct("Manzana Roja", 4.50, true, 20.0),
+            new CatalogProduct("Galletas Oreo", 2.50, false, 20.0));
+
+    @Test
+    @DisplayName("a quantity first is an order, and the size picks the right product")
+    void ordersWithoutOrderWords() {
+        var liters = composer.detectOrder("3 Leches Glorias 2L", SHOP).orElseThrow();
+        assertThat(liters.productName()).isEqualTo("Leche Gloria 2L");
+        assertThat(liters.quantity()).isEqualTo(3);
+
+        assertThat(composer.detectOrder("me gustaria 2 oreos", SHOP).orElseThrow().productName())
+                .isEqualTo("Galletas Oreo");
+    }
+
+    @Test
+    @DisplayName("a size is not the quantity")
+    void sizeIsNotQuantity() {
+        var coca = composer.detectOrder("Quiero una gaseosa Coca Cola de 500 ml", SHOP).orElseThrow();
+        assertThat(coca.productName()).isEqualTo("Coca-Cola 500ml");
+        assertThat(coca.quantity()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("asks which one instead of guessing between similar products")
+    void asksWhenAmbiguous() {
+        assertThat(composer.detectOrder("3 leches gloria", SHOP)).isEmpty();
+        assertThat(composer.compose("3 leches gloria", SHOP).orElseThrow())
+                .contains("varias opciones").contains("Leche Gloria Entera").contains("Leche Gloria 2L");
+    }
+
+    @Test
+    @DisplayName("answers a generic category with its products")
+    void answersCategories() {
+        assertThat(composer.compose("1 gaseosa", SHOP).orElseThrow())
+                .contains("Coca-Cola 500ml").doesNotContain("Leche");
+        assertThat(composer.compose("que frutas tienes", SHOP).orElseThrow()).contains("Manzana Roja");
+    }
+
+    @Test
+    @DisplayName("names the unknown product, and never dead-ends on what it cannot understand")
+    void repliesToUnknownMessages() {
+        assertThat(composer.replyToUnknown("gatorade", SHOP).orElseThrow())
+                .contains("No contamos con gatorade").contains("• Galletas Oreo");
+        assertThat(composer.replyToUnknown("Un six pack de Sporade's", SHOP).orElseThrow())
+                .contains("No contamos con sporade");
+        assertThat(composer.replyToUnknown("el perro de mi vecino ladra mucho toda la noche", SHOP).orElseThrow())
+                .contains("No logré entender").contains("• Galletas Oreo");
+    }
 }
