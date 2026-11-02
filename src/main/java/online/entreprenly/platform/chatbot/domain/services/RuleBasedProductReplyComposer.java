@@ -35,10 +35,23 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
 
 
     private static final String[] ORDER_INTENT = {
-            "quiero", "kiero", "qiero", "quisiera", "deseo", "dame", "deme", "necesito", "comprar",
-            "pedir", "pedido", "llevar", "llevo", "ponme", "mandame", "enviame", "envieme", "traeme",
-            "separame", "vendeme", "vender", "me das", "me da ", "me vendes", "anota", "agrega",
+            "quiero", "kiero", "qiero", "quisiera", "queria", "gustaria", "deseo", "dame", "deme", "necesito",
+            "comprar", "pedir", "pedido", "llevar", "llevo", "ponme", "mandame", "enviame", "envieme", "traeme",
+            "separame", "vendeme", "vender", "me das", "me da ", "me vendes", "anota", "agrega", "busco",
             "kilos", "kilo", "kg", "unidad", "unidades", "docena", "paquete", "botella", "lata"};
+
+    /** Sizes belong to the product: "Coca Cola de 500 ml" is one bottle, not 500. */
+    private static final Pattern SIZE = Pattern.compile("(?<![\\w.,])(\\d+(?:[.,]\\d+)?)\\s*(ml|lt|l|litros?|gr|g)(?![\\w])");
+
+    /** Generic words clients use for what the catalog lists by brand or name. */
+    private static final Map<String, List<String>> CATEGORIES = Map.of(
+            "gaseosa", List.of("coca", "cola", "kola", "sprite", "fanta", "pepsi", "crush", "guarana"),
+            "refresco", List.of("coca", "cola", "kola", "sprite", "fanta", "pepsi", "crush", "guarana"),
+            "bebida", List.of("coca", "cola", "kola", "sprite", "fanta", "pepsi", "agua", "jugo", "gatorade", "sporade"),
+            "fruta", List.of("manzana", "platano", "fresa", "pera", "naranja", "uva", "mandarina", "papaya", "sandia", "pina"),
+            "verdura", List.of("tomate", "cebolla", "papa", "zanahoria", "lechuga", "pepino"),
+            "lacteo", List.of("leche", "yogurt", "queso", "mantequilla"),
+            "dulce", List.of("galleta", "oreo", "chocolate", "caramelo"));
 
     /** Topics the generic responder handles; a product reply would only get in the way. */
     private static final String[] NON_PRODUCT_TOPICS = {
@@ -52,7 +65,8 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
             "pedir", "pedido", "llevar", "llevo", "ponme", "mandame", "enviame", "envieme", "traeme",
             "separame", "vendeme", "vender", "vendes", "das", "anota", "anotame", "agrega", "agregame",
             "kilos", "kilo", "unidad", "unidades", "docena", "docenas", "paquete", "paquetes",
-            "botella", "botellas", "lata", "latas",
+            "botella", "botellas", "lata", "latas", "six", "pack", "sixpack", "queria", "gustaria",
+            "busco", "ml", "litro", "litros",
             "un", "una", "uno", "unos", "unas", "dos", "tres", "cuatro", "cinco", "seis", "siete",
             "ocho", "nueve", "diez", "once", "doce", "media", "medio", "par",
             "de", "del", "la", "el", "los", "las", "por", "para", "con", "favor", "porfavor", "porfa",
@@ -69,12 +83,19 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
         var text = normalize(incomingContent);
         var safeCatalog = catalog == null ? List.<CatalogProduct>of() : catalog;
 
-        var match = bestMatch(text, safeCatalog);
-        if (match != null) {
-            return Optional.of(replyForProduct(text, match));
+        var tied = topMatches(text, safeCatalog);
+        if (tied.size() > 1) {
+            return Optional.of("Tenemos varias opciones:\n%s\n¿Cuál deseas?".formatted(listed(tied)));
+        }
+        if (tied.size() == 1) {
+            return Optional.of(replyForProduct(text, tied.get(0)));
         }
         if (mentionsAny(text, NON_PRODUCT_TOPICS)) {
             return Optional.empty();
+        }
+        var category = categoryProducts(text, safeCatalog);
+        if (!category.isEmpty()) {
+            return Optional.of("Estas son nuestras opciones:\n%s\n¿Cuál deseas y cuántos?".formatted(listed(category)));
         }
         if (mentionsAny(text, "catalogo", "productos", "que venden", "que vende", "que vendes",
                 "que tienes", "que tienen", "q tienes", "k tienes", "que hay", "menu", "lista", "ofrecen",
@@ -107,7 +128,11 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
 
 
 
-        var product = bestMatch(text, catalog);
+        var tied = topMatches(text, catalog);
+        if (tied.size() > 1) {
+            return Optional.empty();
+        }
+        var product = tied.isEmpty() ? null : tied.get(0);
         boolean usingContext = false;
         if (product == null) {
             // "quiero un sporade" after asking about Coca Cola names another product: it must not
@@ -140,7 +165,26 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
         if (incomingContent == null || incomingContent.isBlank() || catalog == null || catalog.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.ofNullable(bestMatch(normalize(incomingContent), catalog));
+        var tied = topMatches(normalize(incomingContent), catalog);
+        return tied.size() == 1 ? Optional.of(tied.get(0)) : Optional.empty();
+    }
+
+    @Override
+    public String catalogue(List<CatalogProduct> catalog) {
+        return replyWithCatalogue(catalog == null ? List.of() : catalog);
+    }
+
+    @Override
+    public Optional<String> replyToUnknown(String incomingContent, List<CatalogProduct> catalog) {
+        if (incomingContent == null || catalog == null || catalog.stream().noneMatch(CatalogProduct::isInStock)) {
+            return Optional.empty();
+        }
+        var requested = extractRequestedProduct(normalize(incomingContent));
+        // A word or two is a product we do not carry; anything longer we simply did not understand.
+        if (requested != null && requested.split(" ").length <= 3) {
+            return Optional.of(replyWhenProductNotFound(catalog, requested));
+        }
+        return Optional.of("No logré entender tu mensaje. " + replyWithCatalogue(catalog));
     }
 
 
@@ -160,13 +204,11 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
             }
             return "Por ahora no contamos con productos disponibles. ¡Pronto tendremos novedades!";
         }
-        var items = inStock.stream()
-                .map(p -> "%s (%s %s)".formatted(p.name(), price(p.price()), p.soldByWeight() ? "por kg" : "c/u"))
-                .collect(Collectors.joining(", "));
+        var items = listed(inStock);
         if (requestedProduct != null && !requestedProduct.isBlank()) {
-            return "No contamos con %s, pero sí tenemos: %s. ¿Te interesa alguno?".formatted(requestedProduct, items);
+            return "No contamos con %s, pero sí tenemos:\n%s\n¿Te interesa alguno?".formatted(requestedProduct, items);
         }
-        return "No tenemos ese producto por ahora, pero sí contamos con: %s. ¿Te interesa alguno?".formatted(items);
+        return "No tenemos ese producto por ahora, pero sí contamos con:\n%s\n¿Te interesa alguno?".formatted(items);
     }
 
 
@@ -206,14 +248,33 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
     }
 
     private String replyWithCatalogue(List<CatalogProduct> catalog) {
-        var items = catalog.stream()
-                .filter(CatalogProduct::isInStock)
-                .map(p -> "%s (%s %s)".formatted(p.name(), price(p.price()), p.soldByWeight() ? "por kg" : "c/u"))
-                .collect(Collectors.joining(", "));
-        if (items.isBlank()) {
+        var inStock = catalog.stream().filter(CatalogProduct::isInStock).toList();
+        if (inStock.isEmpty()) {
             return "Por ahora no tenemos productos con stock disponible.";
         }
-        return "Tenemos disponible: %s. ¿Qué te gustaría pedir?".formatted(items);
+        return "Tenemos disponible:\n%s\n¿Qué te gustaría pedir?".formatted(listed(inStock));
+    }
+
+    private static String listed(List<CatalogProduct> products) {
+        return products.stream()
+                .map(p -> "• %s — %s %s".formatted(p.name(), price(p.price()), p.soldByWeight() ? "por kg" : "c/u"))
+                .collect(Collectors.joining("\n"));
+    }
+
+    /** In-stock products of the category the message names ("1 gaseosa", "qué frutas tienes"). */
+    private static List<CatalogProduct> categoryProducts(String text, List<CatalogProduct> catalog) {
+        for (var word : words(text)) {
+            for (var category : CATEGORIES.entrySet()) {
+                if (!sameWord(category.getKey(), word)) continue;
+                var products = catalog.stream()
+                        .filter(CatalogProduct::isInStock)
+                        .filter(p -> productTokens(p).stream().anyMatch(token -> category.getValue().stream()
+                                .anyMatch(keyword -> sameWord(keyword, token))))
+                        .toList();
+                if (!products.isEmpty()) return products;
+            }
+        }
+        return List.of();
     }
 
     /**
@@ -222,8 +283,14 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
      * fragments inside unrelated words no longer do.
      */
     private CatalogProduct bestMatch(String text, List<CatalogProduct> catalog) {
-        var textWords = words(text);
-        CatalogProduct best = null;
+        var tied = topMatches(text, catalog);
+        return tied.isEmpty() ? null : tied.get(0);
+    }
+
+    /** Every product with the best score: more than one means the client has to choose. */
+    private List<CatalogProduct> topMatches(String text, List<CatalogProduct> catalog) {
+        var textWords = words(joinSizes(text));
+        var best = new ArrayList<CatalogProduct>();
         int bestScore = 0;
         for (var product : catalog) {
             var tokens = productTokens(product);
@@ -234,17 +301,25 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
             }
             if (score > bestScore) {
                 bestScore = score;
-                best = product;
+                best.clear();
+            }
+            if (score == bestScore && score > 0) {
+                best.add(product);
             }
         }
-        return bestScore > 0 ? best : null;
+        return best;
+    }
+
+    /** "500 ml" and "2 l" are written apart by clients but are one word in the product name. */
+    private static String joinSizes(String text) {
+        return SIZE.matcher(text).replaceAll("$1$2");
     }
 
     /** 2 for an exact word (or its singular/plural), 1 for a prefix or a typo, 0 otherwise. */
     private static int tokenScore(String token, List<String> textWords, String joinedName) {
         int score = 0;
         for (var word : textWords) {
-            if (word.length() < 3) continue;
+            if (word.length() < 3 && !word.equals(token)) continue;
             if (sameWord(token, word) || writtenTogether(token, word, joinedName)) {
                 return 2;
             }
@@ -314,7 +389,9 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
     }
 
     private static List<String> productTokens(CatalogProduct product) {
-        return words(normalize(product.name())).stream().filter(token -> token.length() >= 3).toList();
+        return words(normalize(product.name())).stream()
+                .filter(token -> token.length() >= 3 || (token.length() == 2 && Character.isDigit(token.charAt(0))))
+                .toList();
     }
 
     private static List<String> words(String text) {
@@ -323,16 +400,22 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
 
 
     private Optional<Double> orderQuantity(String text, CatalogProduct product) {
-        if (!mentionsAny(text, ORDER_INTENT)) {
+        if (!mentionsAny(text, ORDER_INTENT) && !startsWithQuantity(text)) {
             return Optional.empty();
         }
         return anyQuantity(text, product);
     }
 
 
+    /** "3 leches gloria", "una coca": naming the amount first is already asking for it. */
+    private static boolean startsWithQuantity(String text) {
+        var first = text.trim().split("[^a-z0-9.,ñ]+", 2)[0];
+        return NUMBER.matcher(first).matches() || NUMBER_WORDS.containsKey(first);
+    }
+
     private Optional<Double> anyQuantity(String text, CatalogProduct product) {
 
-        var cleaned = text;
+        var cleaned = SIZE.matcher(text).replaceAll(" ");
         for (var token : productTokens(product)) {
             cleaned = cleaned.replace(token, " ");
         }

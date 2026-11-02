@@ -192,4 +192,64 @@ class ChatbotConversationServiceImplTest {
         assertThat(address.toOptional().orElseThrow().getContent()).contains("Registré tu pedido");
         assertThat(orders.findByConversationId(convId).get(0).getDeliveryAddress()).isEqualTo("A mi casa");
     }
+
+    private ChatbotConversationServiceImpl shop() {
+        ProductCatalogService catalog = ownerEmail -> List.of(
+                new CatalogProduct("Coca Cola 500ml", 3.00, false, 10.0),
+                new CatalogProduct("Galletas Oreo", 2.50, false, 20.0));
+        return service(catalog, new StubSellerEmailResolver(sellerId -> Optional.empty()));
+    }
+
+    private String say(ChatbotConversationServiceImpl service, String phone, String text) {
+        return service.handle(new HandleInboundMessageCommand(phone, "Ana", text, "seller@test.com"))
+                .toOptional().orElseThrow().getContent();
+    }
+
+    @Test
+    @DisplayName("a greeting comes with the catalog")
+    void greetsWithTheCatalog() {
+        assertThat(say(shop(), "+51 955 000 001", "Buenas tardes"))
+                .contains("Ana").contains("• Coca Cola 500ml").contains("• Galletas Oreo");
+    }
+
+    @Test
+    @DisplayName("a lone product name it does not sell gets an answer, not the generic reply")
+    void answersLoneUnknownProduct() {
+        assertThat(say(shop(), "+51 955 000 002", "gatorade"))
+                .contains("No contamos con gatorade").doesNotContain("Gracias por tu mensaje");
+    }
+
+    @Test
+    @DisplayName("a bare yes shows what can be ordered instead of looping")
+    void yesMovesForward() {
+        assertThat(say(shop(), "+51 955 000 003", "si")).contains("• Galletas Oreo");
+    }
+
+    @Test
+    @DisplayName("a bare yes after a product question asks how many")
+    void yesAfterProductAsksHowMany() {
+        var service = shop();
+        say(service, "+51 955 000 004", "tienen oreos?");
+        assertThat(say(service, "+51 955 000 004", "si")).contains("Cuántos").contains("Galletas Oreo");
+    }
+
+    @Test
+    @DisplayName("takes the product and the address from the same message")
+    void orderAndAddressTogether() {
+        var phone = "+51 955 000 005";
+        var reply = say(shop(), phone, "2 oreos a Av. Perú 124");
+        assertThat(reply).contains("Registré tu pedido").contains("Av. Perú 124");
+        var convId = conversations.findByClientPhone(phone).orElseThrow().getId();
+        assertThat(orders.findByConversationId(convId).get(0).getStatus()).isEqualTo(OrderStatus.WAITING_PAYMENT);
+    }
+
+    @Test
+    @DisplayName("reminds about the missing address while the client asks about something else")
+    void remindsAboutThePendingOrder() {
+        var service = shop();
+        var phone = "+51 955 000 006";
+        say(service, phone, "quiero 2 oreos");
+        assertThat(say(service, phone, "quiero un sporade"))
+                .contains("No contamos con sporade").contains("indícame tu dirección");
+    }
 }
