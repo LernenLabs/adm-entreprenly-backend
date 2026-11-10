@@ -6,6 +6,7 @@ import online.entreprenly.platform.inventory.infrastructure.persistence.jpa.asse
 import online.entreprenly.platform.inventory.infrastructure.persistence.jpa.repositories.UnitLotPersistenceRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,5 +55,14 @@ public class UnitLotRepositoryImpl implements UnitLotRepository {
     public void deleteByProductIdAndOwnerEmail(Long productId, String ownerEmail) {
         var lots = unitLotPersistenceRepository.findAllByProductIdAndOwnerEmail(productId, ownerEmail);
         unitLotPersistenceRepository.deleteAll(lots);
+    }
+
+    @Override
+    public List<UnitLot> findAllExpiringBetween(Instant from, Instant toExclusive) {
+        return unitLotPersistenceRepository
+                .findAllByExpiryDateGreaterThanEqualAndExpiryDateLessThanAndQuantityGreaterThan(from, toExclusive, 0)
+                .stream()
+                .map(UnitLotPersistenceAssembler::toDomainFromPersistence)
+                .toList();
     }
 }

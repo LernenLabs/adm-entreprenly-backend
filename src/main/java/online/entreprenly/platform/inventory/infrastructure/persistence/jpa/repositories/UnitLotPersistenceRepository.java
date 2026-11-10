@@ -4,6 +4,7 @@ import online.entreprenly.platform.inventory.infrastructure.persistence.jpa.enti
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +20,7 @@ public interface UnitLotPersistenceRepository extends JpaRepository<UnitLotPersi
     Optional<UnitLotPersistenceEntity> findByIdAndOwnerEmail(Long id, String ownerEmail);
 
     boolean existsByIdAndOwnerEmail(Long id, String ownerEmail);
+
+    List<UnitLotPersistenceEntity> findAllByExpiryDateGreaterThanEqualAndExpiryDateLessThanAndQuantityGreaterThan(
+            Instant from, Instant toExclusive, int minQuantityExclusive);
 }

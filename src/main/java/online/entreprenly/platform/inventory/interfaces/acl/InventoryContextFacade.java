@@ -1,5 +1,6 @@
 package online.entreprenly.platform.inventory.interfaces.acl;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -25,4 +26,14 @@ public interface InventoryContextFacade {
      * @param items      the products and quantities to deduct, matched by trimmed name
      */
     void decrementStockForItems(String ownerEmail, List<StockDeductionItem> items);
+
+    /**
+     * Returns the lots that still have stock and expire within the given days (both inclusive,
+     * UTC), across every account.
+     *
+     * @param from first expiry day to include
+     * @param to   last expiry day to include
+     * @return the expiring lots with their product name, or an empty list when there are none
+     */
+    List<ExpiringLot> fetchLotsExpiringBetween(LocalDate from, LocalDate to);
 }
