@@ -19,6 +19,8 @@ public final class UserPersistenceAssembler {
         domain.setId(entity.getId());
         domain.setEmail(entity.getEmail());
         domain.setPassword(entity.getPassword());
+        domain.setSessionVersion(entity.getSessionVersion());
+        domain.setRetainedSessionId(entity.getRetainedSessionId());
         domain.setRoles(entity.getRoles().stream()
                 .map(RolePersistenceAssembler::toDomainFromPersistence)
                 .collect(java.util.stream.Collectors.toSet()));
@@ -35,6 +37,8 @@ public final class UserPersistenceAssembler {
         }
         entity.setEmail(user.getEmail());
         entity.setPassword(user.getPassword());
+        entity.setSessionVersion(user.getSessionVersion());
+        entity.setRetainedSessionId(user.getRetainedSessionId());
         entity.setRoles(user.getRoles() == null
                 ? new HashSet<>()
                 : user.getRoles().stream()
@@ -43,4 +47,3 @@ public final class UserPersistenceAssembler {
         return entity;
     }
 }
-

@@ -19,6 +19,14 @@ public interface UserPersistenceRepository extends JpaRepository<UserPersistence
      */
     Optional<UserPersistenceEntity> findByEmail(String email);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<UserPersistenceEntity> findOneByEmail(String email);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<UserPersistenceEntity> findOneById(Long id);
+
+    boolean existsByEmailIgnoreCase(String email);
+
     /**
      * This method is responsible for checking if the user exists by email.
      * @param email The email.
@@ -27,4 +35,3 @@ public interface UserPersistenceRepository extends JpaRepository<UserPersistence
     boolean existsByEmail(String email);
 
 }
-

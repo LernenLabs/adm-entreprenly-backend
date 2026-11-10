@@ -13,6 +13,7 @@ import online.entreprenly.platform.profile.domain.repositories.ProfileRepository
 import online.entreprenly.platform.shared.application.result.ApplicationError;
 import online.entreprenly.platform.shared.application.result.Result;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Profile command service implementation.
@@ -37,10 +38,11 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     }
 
     @Override
+    @Transactional
     public Result<Profile, ApplicationError> handle(UpdateProfileCommand command) {
-        return profileRepository.findById(command.profileId())
+        return profileRepository.findByIdForUpdate(command.profileId())
                 .<Result<Profile, ApplicationError>>map(profile -> {
-                    profile.updateProfile(command.firstName(), command.lastName(), command.phone(), command.avatarUrl(),
+                    profile.updateProfile(command.firstName(), command.lastName(), profile.getPhone(), profile.getAvatarUrl(),
                             command.biography());
                     return Result.success(profileRepository.save(profile));
                 })
@@ -48,8 +50,9 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     }
 
     @Override
+    @Transactional
     public Result<Profile, ApplicationError> handle(UpdatePreferencesCommand command) {
-        return profileRepository.findById(command.profileId())
+        return profileRepository.findByIdForUpdate(command.profileId())
                 .<Result<Profile, ApplicationError>>map(profile -> {
                     profile.updatePreferences(new Preferences(
                             command.language(), command.timezone(), command.theme(), command.currency()));
@@ -59,8 +62,9 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     }
 
     @Override
+    @Transactional
     public Result<Profile, ApplicationError> handle(UpdateNotificationSettingsCommand command) {
-        return profileRepository.findById(command.profileId())
+        return profileRepository.findByIdForUpdate(command.profileId())
                 .<Result<Profile, ApplicationError>>map(profile -> {
                     profile.updateNotificationSettings(new NotificationSettings(command.stockAlerts()));
                     return Result.success(profileRepository.save(profile));
@@ -69,8 +73,9 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     }
 
     @Override
+    @Transactional
     public Result<Profile, ApplicationError> handle(UpdateProfilePlanCommand command) {
-        return profileRepository.findByUserId(command.userId())
+        return profileRepository.findByUserIdForUpdate(command.userId())
                 .<Result<Profile, ApplicationError>>map(profile -> {
                     profile.changePlan(command.plan());
                     return Result.success(profileRepository.save(profile));

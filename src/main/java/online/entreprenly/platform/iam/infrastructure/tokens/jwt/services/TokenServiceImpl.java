@@ -3,12 +3,14 @@ package online.entreprenly.platform.iam.infrastructure.tokens.jwt.services;
 import online.entreprenly.platform.iam.infrastructure.tokens.jwt.BearerTokenService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
+import online.entreprenly.platform.iam.domain.model.aggregates.User;
+import online.entreprenly.platform.iam.domain.repositories.UserRepository;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -37,43 +39,26 @@ public class TokenServiceImpl implements BearerTokenService {
     @Value("${authorization.jwt.expiration.days}")
     private int expirationDays;
 
-    /**
-     * This method generates a JWT token from an authentication object
-     * @param authentication the authentication object
-     * @return String the JWT token
-     * @see Authentication
-     */
+    private final UserRepository users;
+
+    public TokenServiceImpl(UserRepository users) {
+        this.users = users;
+    }
+
     @Override
-    public String generateToken(Authentication authentication) {
-        return buildTokenWithDefaultParameters(authentication.getName());
-    }
-
-    /**
-     * This method generates a JWT token from a username
-     * @param username the username
-     * @return String the JWT token
-     */
-    public String generateToken(String username) {
-        return buildTokenWithDefaultParameters(username);
-    }
-
-    /**
-     * This method generates a JWT token from a username and a secret.
-     * It uses the default expiration days from the application.properties file.
-     * @param username the username
-     * @return String the JWT token
-     */
-    private String buildTokenWithDefaultParameters(String username) {
+    public String generateToken(User user) {
         var issuedAt = new Date();
-        var expiration = DateUtils.addDays(issuedAt, expirationDays);
-        var key = getSigningKey();
         return Jwts.builder()
-                .subject(username)
+                .subject(user.getEmail())
+                .id(UUID.randomUUID().toString())
+                .claim("uid", user.getId())
+                .claim("sessionVersion", user.getSessionVersion())
                 .issuedAt(issuedAt)
-                .expiration(expiration)
-                .signWith(key)
+                .expiration(DateUtils.addDays(issuedAt, expirationDays))
+                .signWith(getSigningKey())
                 .compact();
     }
+
 
     /**
      * This method extracts the username from a JWT token
@@ -93,22 +78,34 @@ public class TokenServiceImpl implements BearerTokenService {
     @Override
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token);
-            log.info("Token is valid");
-            return true;
-        }  catch (SignatureException e) {
-            log.error("Invalid JSON Web Token Signature: {}", e.getMessage());
-        } catch (MalformedJwtException e) {
-            log.error("Invalid JSON Web Token: {}", e.getMessage());
-        } catch (ExpiredJwtException e) {
-            log.error("JSON Web Token is expired: {}", e.getMessage());
-        } catch (UnsupportedJwtException e) {
-            log.error("JSON Web Token is unsupported: {}", e.getMessage());
-        } catch (IllegalArgumentException e) {
-            log.error("JSON Web Token claims string is empty: {}", e.getMessage());
+            var claims = extractAllClaims(token);
+            return users.findByEmail(claims.getSubject())
+                    .flatMap(user -> activeSessionId(claims, user)).isPresent();
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
         }
-        return false;
     }
+
+    @Override
+    public Optional<String> activeSessionId(String token, User user) {
+        try {
+            return activeSessionId(extractAllClaims(token), user);
+        } catch (JwtException | IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<String> activeSessionId(Claims claims, User user) {
+        var version = claims.get("sessionVersion", Long.class);
+        var id = claims.getId();
+        if (id == null || version == null || !user.getEmail().equals(claims.getSubject())
+                || !user.getId().equals(claims.get("uid", Long.class))) {
+            return Optional.empty();
+        }
+        return version == user.getSessionVersion() || id.equals(user.getRetainedSessionId())
+                ? Optional.of(id) : Optional.empty();
+    }
+
 
     /**
      * Extract a claim from a token
