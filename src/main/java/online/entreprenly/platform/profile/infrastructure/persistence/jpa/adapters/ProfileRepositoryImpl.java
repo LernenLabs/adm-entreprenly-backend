@@ -31,6 +31,16 @@ public class ProfileRepositoryImpl implements ProfileRepository {
     }
 
     @Override
+    public Optional<Profile> findByIdForUpdate(Long id) {
+        return profilePersistenceRepository.findOneById(id).map(ProfilePersistenceAssembler::toDomainFromPersistence);
+    }
+
+    @Override
+    public Optional<Profile> findByUserIdForUpdate(Long userId) {
+        return profilePersistenceRepository.findOneByUserId(userId).map(ProfilePersistenceAssembler::toDomainFromPersistence);
+    }
+
+    @Override
     public boolean existsByUserId(Long userId) {
         return profilePersistenceRepository.existsByUserId(userId);
     }

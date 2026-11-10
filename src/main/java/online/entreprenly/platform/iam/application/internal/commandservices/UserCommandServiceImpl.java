@@ -4,7 +4,6 @@ import online.entreprenly.platform.iam.application.commandservices.UserCommandSe
 import online.entreprenly.platform.iam.application.internal.outboundservices.hashing.HashingService;
 import online.entreprenly.platform.iam.application.internal.outboundservices.tokens.TokenService;
 import online.entreprenly.platform.iam.domain.model.aggregates.User;
-import online.entreprenly.platform.iam.domain.model.commands.ChangeEmailCommand;
 import online.entreprenly.platform.iam.domain.model.commands.ChangePasswordCommand;
 import online.entreprenly.platform.iam.domain.model.commands.SignInCommand;
 import online.entreprenly.platform.iam.domain.model.commands.SignUpCommand;
@@ -52,7 +51,7 @@ public class UserCommandServiceImpl implements UserCommandService {
         if (!hashingService.matches(command.password(), user.get().getPassword())) {
             return Result.failure(ApplicationError.validationError("credentials", "Invalid email or password"));
         }
-        var token = tokenService.generateToken(user.get().getEmail());
+        var token = tokenService.generateToken(user.get());
         return Result.success(ImmutablePair.of(user.get(), token));
     }
 
@@ -79,31 +78,26 @@ public class UserCommandServiceImpl implements UserCommandService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public Result<User, ApplicationError> handle(ChangePasswordCommand command) {
-        var user = userRepository.findByEmail(command.email());
+        var user = userRepository.findByEmailForUpdate(command.email());
         if (user.isEmpty()) {
             return Result.failure(ApplicationError.notFound("User", command.email()));
         }
         if (!hashingService.matches(command.currentPassword(), user.get().getPassword())) {
             return Result.failure(ApplicationError.validationError("currentPassword", "Current password is incorrect"));
         }
+        var session = tokenService.activeSessionId(command.token(), user.get());
+        if (session.isEmpty()) {
+            return Result.failure(ApplicationError.validationError("session", "Sign in again to change the password"));
+        }
+        if (command.newPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            return Result.failure(ApplicationError.validationError("newPassword", "Password exceeds 72 bytes"));
+        }
         user.get().setPassword(hashingService.encode(command.newPassword()));
+        user.get().setSessionVersion(user.get().getSessionVersion() + 1);
+        user.get().setRetainedSessionId(session.get());
         return Result.success(userRepository.save(user.get()));
     }
 
-    @Override
-    public Result<User, ApplicationError> handle(ChangeEmailCommand command) {
-        var user = userRepository.findByEmail(command.currentEmail());
-        if (user.isEmpty()) {
-            return Result.failure(ApplicationError.notFound("User", command.currentEmail()));
-        }
-        if (command.newEmail().equalsIgnoreCase(command.currentEmail())) {
-            return Result.failure(ApplicationError.validationError("email", "New email matches the current email"));
-        }
-        if (userRepository.existsByEmail(command.newEmail())) {
-            return Result.failure(ApplicationError.conflict("User", "Email already exists"));
-        }
-        user.get().setEmail(command.newEmail());
-        return Result.success(userRepository.save(user.get()));
-    }
 }

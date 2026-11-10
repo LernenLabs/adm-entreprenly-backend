@@ -45,8 +45,11 @@ public class ProfilesController {
 
     private final ProfileCommandService profileCommandService;
     private final ProfileQueryService profileQueryService;
+    private final online.entreprenly.platform.iam.domain.repositories.UserRepository users;
 
-    public ProfilesController(ProfileCommandService profileCommandService, ProfileQueryService profileQueryService) {
+    public ProfilesController(ProfileCommandService profileCommandService, ProfileQueryService profileQueryService,
+                              online.entreprenly.platform.iam.domain.repositories.UserRepository users) {
+        this.users = users;
         this.profileCommandService = profileCommandService;
         this.profileQueryService = profileQueryService;
     }
@@ -63,7 +66,9 @@ public class ProfilesController {
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
             @ApiResponse(responseCode = "409", description = "A profile already exists for the user")
     })
-    public ResponseEntity<?> createProfile(@Valid @RequestBody CreateProfileResource resource) {
+    public ResponseEntity<?> createProfile(@Valid @RequestBody CreateProfileResource resource,
+            org.springframework.security.core.Authentication authentication) {
+        if (!owns(resource.userId(), authentication)) return ResponseEntity.notFound().build();
         var command = CreateProfileCommandFromResourceAssembler.toCommandFromResource(resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
@@ -81,8 +86,9 @@ public class ProfilesController {
                     content = @Content(schema = @Schema(implementation = ProfileResource.class))),
             @ApiResponse(responseCode = "404", description = "Profile not found", content = @Content)
     })
-    public ResponseEntity<ProfileResource> getProfileById(@PathVariable Long profileId) {
+    public ResponseEntity<ProfileResource> getProfileById(@PathVariable Long profileId, org.springframework.security.core.Authentication authentication) {
         return profileQueryService.handle(new GetProfileByIdQuery(profileId))
+                .filter(profile -> owns(profile.getUserId(), authentication))
                 .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -99,7 +105,8 @@ public class ProfilesController {
                     content = @Content(schema = @Schema(implementation = ProfileResource.class))),
             @ApiResponse(responseCode = "404", description = "Profile not found", content = @Content)
     })
-    public ResponseEntity<ProfileResource> getProfileByUserId(@RequestParam Long userId) {
+    public ResponseEntity<ProfileResource> getProfileByUserId(@RequestParam Long userId, org.springframework.security.core.Authentication authentication) {
+        if (!owns(userId, authentication)) return ResponseEntity.notFound().build();
         return profileQueryService.handle(new GetProfileByUserIdQuery(userId))
                 .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
@@ -118,7 +125,12 @@ public class ProfilesController {
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
             @ApiResponse(responseCode = "404", description = "Profile not found", content = @Content)
     })
-    public ResponseEntity<?> updateProfile(@PathVariable Long profileId, @Valid @RequestBody UpdateProfileResource resource) {
+    public ResponseEntity<?> updateProfile(@PathVariable Long profileId, @Valid @RequestBody UpdateProfileResource resource,
+            org.springframework.security.core.Authentication authentication) {
+        if (profileQueryService.handle(new GetProfileByIdQuery(profileId))
+                .filter(profile -> owns(profile.getUserId(), authentication)).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         var command = UpdateProfileCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
@@ -137,7 +149,12 @@ public class ProfilesController {
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
             @ApiResponse(responseCode = "404", description = "Profile not found", content = @Content)
     })
-    public ResponseEntity<?> updatePreferences(@PathVariable Long profileId, @Valid @RequestBody PreferencesResource resource) {
+    public ResponseEntity<?> updatePreferences(@PathVariable Long profileId, @Valid @RequestBody PreferencesResource resource,
+            org.springframework.security.core.Authentication authentication) {
+        if (profileQueryService.handle(new GetProfileByIdQuery(profileId))
+                .filter(profile -> owns(profile.getUserId(), authentication)).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         var command = UpdatePreferencesCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
@@ -156,10 +173,18 @@ public class ProfilesController {
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
             @ApiResponse(responseCode = "404", description = "Profile not found", content = @Content)
     })
-    public ResponseEntity<?> updateNotificationSettings(@PathVariable Long profileId, @Valid @RequestBody NotificationSettingsResource resource) {
+    public ResponseEntity<?> updateNotificationSettings(@PathVariable Long profileId, @Valid @RequestBody NotificationSettingsResource resource,
+            org.springframework.security.core.Authentication authentication) {
+        if (profileQueryService.handle(new GetProfileByIdQuery(profileId))
+                .filter(profile -> owns(profile.getUserId(), authentication)).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         var command = UpdateNotificationSettingsCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, ProfileResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
+    }
+    private boolean owns(Long userId, org.springframework.security.core.Authentication authentication) {
+        return users.findByEmail(authentication.getName()).filter(user -> userId.equals(user.getId())).isPresent();
     }
 }

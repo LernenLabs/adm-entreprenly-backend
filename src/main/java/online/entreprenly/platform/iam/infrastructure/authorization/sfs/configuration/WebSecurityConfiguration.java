@@ -104,6 +104,8 @@ public class WebSecurityConfiguration {
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers(
                                 "/api/v1/authentication/**",
+                                "/api/v1/users/me/email-change-requests/confirm/*/*",
+                                "/api/v1/profile-avatars/*",
                                 // Inbound WhatsApp webhook + bridge relay (the provider/bridge cannot
                                 // present a JWT; bridge writes are guarded by a shared token) and the
                                 // browser EventSource stream (EventSource cannot send Authorization headers).

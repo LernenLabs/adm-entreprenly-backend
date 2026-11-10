@@ -20,6 +20,9 @@ public interface ProfilePersistenceRepository extends JpaRepository<ProfilePersi
      */
     Optional<ProfilePersistenceEntity> findByUserId(Long userId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<ProfilePersistenceEntity> findOneByIdAndUserId(Long id, Long userId);
+
     /**
      * Checks whether a profile already exists for the given IAM user identifier.
      *
@@ -27,4 +30,10 @@ public interface ProfilePersistenceRepository extends JpaRepository<ProfilePersi
      * @return {@code true} if a profile exists, otherwise {@code false}
      */
     boolean existsByUserId(Long userId);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<ProfilePersistenceEntity> findOneById(Long id);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<ProfilePersistenceEntity> findOneByUserId(Long userId);
 }
