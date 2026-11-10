@@ -22,6 +22,10 @@ public class User extends AbstractDomainAggregateRoot<User> {
     @Setter
     private String password;
     @Setter
+    private long sessionVersion;
+    @Setter
+    private String retainedSessionId;
+    @Setter
     private Set<Role> roles;
 
     public User() {

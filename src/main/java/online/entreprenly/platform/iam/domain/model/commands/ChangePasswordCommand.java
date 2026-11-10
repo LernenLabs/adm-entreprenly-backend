@@ -7,5 +7,5 @@ package online.entreprenly.platform.iam.domain.model.commands;
  * @param currentPassword the user's current password, verified before applying the change
  * @param newPassword     the new password to set
  */
-public record ChangePasswordCommand(String email, String currentPassword, String newPassword) {
+public record ChangePasswordCommand(String email, String currentPassword, String newPassword, String token) {
 }

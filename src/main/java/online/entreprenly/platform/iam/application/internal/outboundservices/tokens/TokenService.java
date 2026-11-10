@@ -11,7 +11,9 @@ public interface TokenService {
      * @param username principal username
      * @return signed token value
      */
-    String generateToken(String username);
+    String generateToken(online.entreprenly.platform.iam.domain.model.aggregates.User user);
+
+    java.util.Optional<String> activeSessionId(String token, online.entreprenly.platform.iam.domain.model.aggregates.User user);
 
     /**
      * Extracts the username from a token.

@@ -25,10 +25,15 @@ public class UserPersistenceEntity extends AuditableAbstractPersistenceEntity {
     @Column(name = "password", nullable = false, length = 120)
     private String password;
 
+    @Column(nullable = false, columnDefinition = "bigint default 0")
+    private long sessionVersion;
+
+    @Column(length = 36)
+    private String retainedSessionId;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<RolePersistenceEntity> roles = new HashSet<>();
 }
-

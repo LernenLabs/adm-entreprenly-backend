@@ -8,7 +8,7 @@ import online.entreprenly.platform.iam.interfaces.rest.resources.ChangePasswordR
  * and the authenticated user's email (resolved from the JWT).
  */
 public class ChangePasswordCommandFromResourceAssembler {
-    public static ChangePasswordCommand toCommandFromResource(String email, ChangePasswordResource resource) {
-        return new ChangePasswordCommand(email, resource.currentPassword(), resource.newPassword());
+    public static ChangePasswordCommand toCommandFromResource(String email, ChangePasswordResource resource, String token) {
+        return new ChangePasswordCommand(email, resource.currentPassword(), resource.newPassword(), token);
     }
 }

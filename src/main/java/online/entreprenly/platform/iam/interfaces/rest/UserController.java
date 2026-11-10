@@ -1,10 +1,8 @@
 package online.entreprenly.platform.iam.interfaces.rest;
 
 import online.entreprenly.platform.iam.application.commandservices.UserCommandService;
-import online.entreprenly.platform.iam.interfaces.rest.resources.ChangeEmailResource;
 import online.entreprenly.platform.iam.interfaces.rest.resources.ChangePasswordResource;
 import online.entreprenly.platform.iam.interfaces.rest.resources.UserResource;
-import online.entreprenly.platform.iam.interfaces.rest.transform.ChangeEmailCommandFromResourceAssembler;
 import online.entreprenly.platform.iam.interfaces.rest.transform.ChangePasswordCommandFromResourceAssembler;
 import online.entreprenly.platform.iam.interfaces.rest.transform.UserResourceFromEntityAssembler;
 import online.entreprenly.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
@@ -28,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
  *     endpoints require a valid Bearer token.
  *     <ul>
  *         <li>PUT /api/v1/users/me/password</li>
- *         <li>PUT /api/v1/users/me/email</li>
  *     </ul>
  * </p>
  */
@@ -37,8 +34,11 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Users", description = "Authenticated user account management endpoints")
 public class UserController {
     private final UserCommandService userCommandService;
+    private final online.entreprenly.platform.iam.infrastructure.tokens.jwt.BearerTokenService tokens;
 
-    public UserController(UserCommandService userCommandService) {
+    public UserController(UserCommandService userCommandService,
+                          online.entreprenly.platform.iam.infrastructure.tokens.jwt.BearerTokenService tokens) {
+        this.tokens = tokens;
         this.userCommandService = userCommandService;
     }
 
@@ -55,8 +55,9 @@ public class UserController {
     )
     public ResponseEntity<?> changePassword(
             @Valid @RequestBody ChangePasswordResource resource,
-            Authentication authentication) {
-        var command = ChangePasswordCommandFromResourceAssembler.toCommandFromResource(authentication.getName(), resource);
+            Authentication authentication, jakarta.servlet.http.HttpServletRequest request) {
+        var command = ChangePasswordCommandFromResourceAssembler.toCommandFromResource(
+                authentication.getName(), resource, tokens.getBearerTokenFrom(request));
         var result = userCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
@@ -65,26 +66,4 @@ public class UserController {
         );
     }
 
-    /**
-     * Changes the authenticated user's email (login identity).
-     * @param resource the change-email request body with the new email.
-     * @param authentication the security context holding the current user's email.
-     * @return the updated user resource.
-     */
-    @PutMapping("/me/email")
-    @Operation(
-        summary = "Change email",
-        description = "Changes the authenticated user's email. After this change the existing JWT is stale and the user must sign in again."
-    )
-    public ResponseEntity<?> changeEmail(
-            @Valid @RequestBody ChangeEmailResource resource,
-            Authentication authentication) {
-        var command = ChangeEmailCommandFromResourceAssembler.toCommandFromResource(authentication.getName(), resource);
-        var result = userCommandService.handle(command);
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                UserResourceFromEntityAssembler::toResourceFromEntity,
-                HttpStatus.OK
-        );
-    }
 }

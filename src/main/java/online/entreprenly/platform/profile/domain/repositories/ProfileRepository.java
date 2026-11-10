@@ -12,6 +12,8 @@ public interface ProfileRepository {
 
     Optional<Profile> findByUserId(Long userId);
 
+    Optional<Profile> findByIdForUpdate(Long id);
+    Optional<Profile> findByUserIdForUpdate(Long userId);
     boolean existsByUserId(Long userId);
 
     Profile save(Profile profile);
