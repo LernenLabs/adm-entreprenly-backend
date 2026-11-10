@@ -39,9 +39,13 @@ public class VerificationChallenges {
         this.secret = secret;
     }
 
+    public boolean deliveryAvailable() {
+        return environment.acceptsProfiles(Profiles.of("av2"));
+    }
+
     /** Called under the owning user's or profile's database lock. */
     public ResponseEntity<?> issue(String id, String destination, String code, String message) {
-        if (!environment.acceptsProfiles(Profiles.of("av2"))) {
+        if (!deliveryAvailable()) {
             return error(HttpStatus.SERVICE_UNAVAILABLE, "Verification delivery is unavailable.");
         }
         var now = Instant.now();
@@ -59,8 +63,32 @@ public class VerificationChallenges {
         return ResponseEntity.accepted().build();
     }
 
+    /** Schedules external delivery after commit, keeping provider latency out of the public response. */
+    public void issueEmail(String id, String destination, String code, Runnable deliver) {
+        var now = Instant.now();
+        var previous = challenges.findById(id);
+        if (previous.isPresent() && now.isBefore(previous.get().issuedAt.plus(RESEND_DELAY))) return;
+        challenges.save(new VerificationChallenge(id, destination, digest(id, code), now));
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        deliver.run();
+                    }
+                });
+    }
+
     /** A failed attempt is committed by the caller, so retries cannot bypass the attempt limit. */
     public Check check(String id, String destination, String code) {
+        return check(id, destination, code, true);
+    }
+
+    /** High-entropy links do not consume an account's attempts on an unrelated token. */
+    public Check checkLink(String id, String destination, String token) {
+        return check(id, destination, token, false);
+    }
+
+    private Check check(String id, String destination, String code, boolean countFailure) {
         var challenge = challenges.findById(id).orElse(null);
         if (challenge == null || !Instant.now().isBefore(challenge.issuedAt.plus(LIFETIME))
                 || challenge.attempts >= MAX_ATTEMPTS) {
@@ -68,7 +96,7 @@ public class VerificationChallenges {
         }
         if ((destination != null && !destination.equals(challenge.destination))
                 || !MessageDigest.isEqual(HexFormat.of().parseHex(challenge.digest), HexFormat.of().parseHex(digest(id, code)))) {
-            challenge.attempts++;
+            if (countFailure) challenge.attempts++;
             return new Check(null, error(HttpStatus.BAD_REQUEST, "Invalid verification code or link."));
         }
         return new Check(challenge.destination, null);
