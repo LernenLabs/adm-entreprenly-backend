@@ -2,6 +2,7 @@ package online.entreprenly.platform.inventory.domain.repositories;
 
 import online.entreprenly.platform.inventory.domain.model.aggregates.UnitLot;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,4 +21,10 @@ public interface UnitLotRepository {
     void deleteById(Long id);
 
     void deleteByProductIdAndOwnerEmail(Long productId, String ownerEmail);
+
+    /**
+     * Finds, across every owner, the lots with stock whose expiry date falls in
+     * {@code [from, toExclusive)}.
+     */
+    List<UnitLot> findAllExpiringBetween(Instant from, Instant toExclusive);
 }

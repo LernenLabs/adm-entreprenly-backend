@@ -5,6 +5,7 @@ import online.entreprenly.platform.inventory.application.queryservices.UnitProdu
 import online.entreprenly.platform.inventory.application.queryservices.WeightLotQueryService;
 import online.entreprenly.platform.inventory.application.queryservices.WeightProductQueryService;
 import online.entreprenly.platform.inventory.domain.model.aggregates.UnitLot;
+import online.entreprenly.platform.inventory.domain.model.valueobjects.ProductType;
 import online.entreprenly.platform.inventory.domain.model.aggregates.WeightLot;
 import online.entreprenly.platform.inventory.domain.model.queries.GetAllUnitLotsQuery;
 import online.entreprenly.platform.inventory.domain.model.queries.GetAllUnitProductsQuery;
@@ -13,15 +14,20 @@ import online.entreprenly.platform.inventory.domain.model.queries.GetAllWeightPr
 import online.entreprenly.platform.inventory.domain.repositories.UnitLotRepository;
 import online.entreprenly.platform.inventory.domain.repositories.WeightLotRepository;
 import online.entreprenly.platform.inventory.interfaces.acl.CatalogItem;
+import online.entreprenly.platform.inventory.interfaces.acl.ExpiringLot;
 import online.entreprenly.platform.inventory.interfaces.acl.InventoryContextFacade;
 import online.entreprenly.platform.inventory.interfaces.acl.StockDeductionItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Application-layer implementation of the Inventory ACL facade.
@@ -151,5 +157,42 @@ public class InventoryContextFacadeImpl implements InventoryContextFacade {
             log.warn("[inventory] not enough stock for weight product '{}' ({}): {} kg unfulfilled",
                     name, ownerEmail, remaining);
         }
+    }
+
+    @Override
+    public List<ExpiringLot> fetchLotsExpiringBetween(LocalDate from, LocalDate to) {
+        if (from == null || to == null || to.isBefore(from)) {
+            return List.of();
+        }
+        var fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant();
+        var toExclusive = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
+        var lots = unitLotRepository.findAllExpiringBetween(fromInstant, toExclusive);
+        var namesByOwner = new HashMap<String, Map<Long, String>>();
+        var expiring = new ArrayList<ExpiringLot>();
+        for (var lot : lots) {
+            if (lot.getExpiryDate() == null || lot.getOwnerEmail() == null || lot.getId() == null) continue;
+            var names = namesByOwner.computeIfAbsent(lot.getOwnerEmail(), this::unitProductNames);
+            expiring.add(new ExpiringLot(
+                    lot.getOwnerEmail(),
+                    ProductType.UNIT.getValue(),
+                    lot.getId(),
+                    lot.getCodeQR(),
+                    lot.getProductId(),
+                    names.get(lot.getProductId()),
+                    lot.getExpiryDate().atZone(ZoneOffset.UTC).toLocalDate(),
+                    lot.getQuantity()));
+        }
+        return expiring;
+    }
+
+    private Map<Long, String> unitProductNames(String ownerEmail) {
+        var names = new HashMap<Long, String>();
+        for (var product : unitProductQueryService.handle(new GetAllUnitProductsQuery(ownerEmail))) {
+            if (product.getId() != null) {
+                names.put(product.getId(), product.getName());
+            }
+        }
+        return names;
     }
 }
