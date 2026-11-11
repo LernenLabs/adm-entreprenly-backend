@@ -221,3 +221,4 @@ class JpaPersistenceAndTenantIsolationTest {
         assertEquals(PaymentMethod.YAPE, listB.get(0).getPaymentMethod());
     }
 }
+

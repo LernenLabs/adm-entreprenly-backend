@@ -108,3 +108,4 @@ Y para ejecutar todas las pruebas del bounded context de Sales:
 ```bash
 ./mvnw test -Dtest=CashRegisterTest,CashRegisterQueryServiceImplTest,SaleCommandServiceImplTest,IotScaleQueryServiceImplTest,JpaPersistenceAndTenantIsolationTest
 ```
+
