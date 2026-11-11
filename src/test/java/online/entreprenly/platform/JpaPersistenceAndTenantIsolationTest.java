@@ -19,10 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Cross-cutting JPA persistence and multi-tenant isolation integration test suite (US-93 / S2-T26).
@@ -104,7 +104,7 @@ class JpaPersistenceAndTenantIsolationTest {
         register.setSalesCount(1);
         register.setCashSalesCount(0);
         register.setDigitalSalesCount(1);
-        var savedRegister = cashRegisterRepository.save(register);
+        cashRegisterRepository.save(register);
 
         // 4. Forzar flush y limpiar el contexto de persistencia (emulando desconexión/reinicio de sesión)
         entityManager.flush();
