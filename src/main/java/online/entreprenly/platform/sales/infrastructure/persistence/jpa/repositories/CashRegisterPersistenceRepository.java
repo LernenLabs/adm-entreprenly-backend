@@ -21,3 +21,4 @@ public interface CashRegisterPersistenceRepository extends JpaRepository<CashReg
     Optional<CashRegisterPersistenceEntity> findByOwnerEmailAndSellerIdAndRegisterDate(
             String ownerEmail, Long sellerId, LocalDate registerDate);
 }
+

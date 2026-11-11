@@ -48,3 +48,4 @@ public class CashRegisterRepositoryImpl implements CashRegisterRepository {
         return CashRegisterPersistenceAssembler.toDomainFromPersistence(saved);
     }
 }
+

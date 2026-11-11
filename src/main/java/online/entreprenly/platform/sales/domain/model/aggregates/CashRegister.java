@@ -166,3 +166,4 @@ public class CashRegister extends AbstractDomainAggregateRoot<CashRegister> {
         return Math.round(value * 100.0) / 100.0;
     }
 }
+

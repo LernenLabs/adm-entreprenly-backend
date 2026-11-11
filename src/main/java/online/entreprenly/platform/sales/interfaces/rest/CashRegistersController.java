@@ -70,3 +70,4 @@ public class CashRegistersController {
         return ResponseEntity.ok(CashRegisterResourceFromEntityAssembler.toResourceFromEntity(cashRegister));
     }
 }
+

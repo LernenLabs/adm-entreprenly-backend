@@ -93,3 +93,4 @@ class CashRegisterQueryServiceImplTest {
         assertEquals(50.0, queryB.getTotal());
     }
 }
+

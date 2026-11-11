@@ -53,3 +53,4 @@ public class InMemoryCashRegisterRepository implements CashRegisterRepository {
         return List.copyOf(registers);
     }
 }
+

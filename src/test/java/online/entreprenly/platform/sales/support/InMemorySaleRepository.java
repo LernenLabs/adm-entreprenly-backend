@@ -59,3 +59,4 @@ public class InMemorySaleRepository implements SaleRepository {
         return List.copyOf(sales);
     }
 }
+

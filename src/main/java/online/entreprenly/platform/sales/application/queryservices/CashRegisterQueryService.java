@@ -17,3 +17,4 @@ public interface CashRegisterQueryService {
      */
     CashRegister handle(GetCashRegisterByDateQuery query);
 }
+

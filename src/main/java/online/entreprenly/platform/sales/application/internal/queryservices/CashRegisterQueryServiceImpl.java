@@ -57,3 +57,4 @@ public class CashRegisterQueryServiceImpl implements CashRegisterQueryService {
         return cashRegisterRepository.save(computed);
     }
 }
+

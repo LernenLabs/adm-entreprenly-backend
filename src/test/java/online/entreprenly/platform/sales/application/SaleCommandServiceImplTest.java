@@ -105,3 +105,4 @@ class SaleCommandServiceImplTest {
         assertEquals(75.00, registerB.getTotal());
     }
 }
+

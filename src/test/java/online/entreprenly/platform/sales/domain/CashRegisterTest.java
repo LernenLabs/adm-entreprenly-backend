@@ -110,3 +110,4 @@ class CashRegisterTest {
         assertEquals(2, register.getSalesCount());
     }
 }
+

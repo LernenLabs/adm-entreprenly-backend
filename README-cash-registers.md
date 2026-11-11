@@ -104,3 +104,4 @@ sales/
   - `updatesCashRegisterUponRegisteringCashSale`
   - `accumulatesCashAndDigitalSalesAcrossChannelsAndMaintainsTotals`
   - `isolatesCashRegistersBetweenMerchants`
+

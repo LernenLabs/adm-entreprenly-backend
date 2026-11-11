@@ -34,3 +34,4 @@ public interface CashRegisterRepository {
      */
     CashRegister save(CashRegister cashRegister);
 }
+

@@ -89,3 +89,4 @@ Cubre 6 casos de prueba unitarios:
 4. `weightReturnsZeroKgWhenNoBridgeUrlIsConfigured`
 5. `weightReturnsValidationErrorWhenOwnerEmailIsBlank`
 6. `weightReturnsValidationErrorWhenOwnerEmailIsNull`
+

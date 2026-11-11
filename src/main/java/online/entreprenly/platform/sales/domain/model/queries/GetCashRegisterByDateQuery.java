@@ -15,3 +15,4 @@ public record GetCashRegisterByDateQuery(String ownerEmail, Long sellerId, Local
         this(ownerEmail, null, date);
     }
 }
+

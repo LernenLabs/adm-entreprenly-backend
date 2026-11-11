@@ -60,3 +60,4 @@ public class CashRegisterPersistenceEntity extends AuditableAbstractPersistenceE
     @Column(name = "digital_sales_count", nullable = false)
     private int digitalSalesCount;
 }
+
