@@ -18,28 +18,32 @@ import online.entreprenly.platform.subscription.domain.repositories.PaymentRepos
 import online.entreprenly.platform.subscription.domain.repositories.SubscriptionPlanRepository;
 import online.entreprenly.platform.subscription.domain.repositories.SubscriptionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 
 /**
  * Subscription command service implementation.
  */
 @Service
+@Transactional
 public class SubscriptionCommandServiceImpl implements SubscriptionCommandService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
+    private final Clock clock;
 
     public SubscriptionCommandServiceImpl(SubscriptionRepository subscriptionRepository,
                                           SubscriptionPlanRepository subscriptionPlanRepository,
                                           PaymentRepository paymentRepository,
-                                          PaymentGateway paymentGateway) {
+                                          PaymentGateway paymentGateway, Clock clock) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.paymentRepository = paymentRepository;
         this.paymentGateway = paymentGateway;
+        this.clock = clock;
     }
 
     @Override
@@ -47,9 +51,8 @@ public class SubscriptionCommandServiceImpl implements SubscriptionCommandServic
         if (command.userId() == null) {
             return Result.failure(ApplicationError.validationError("userId", "A user is required"));
         }
-        var activeSubscription = subscriptionRepository
-                .findFirstByUserIdAndStatus(command.userId(), SubscriptionStatus.ACTIVE);
-        if (activeSubscription.filter(subscription -> subscription.isActiveAt(Instant.now())).isPresent()) {
+        subscriptionRepository.lockSubscriptionsByUserId(command.userId());
+        if (subscriptionRepository.findActiveAt(command.userId(), clock.instant()).isPresent()) {
             return Result.failure(ApplicationError.conflict("Subscription", "The user already has an active subscription"));
         }
         return subscriptionPlanRepository.findById(command.planId())
@@ -69,26 +72,38 @@ public class SubscriptionCommandServiceImpl implements SubscriptionCommandServic
 
     @Override
     public Result<Subscription, ApplicationError> handle(RenewSubscriptionCommand command) {
-        return subscriptionRepository.findById(command.subscriptionId())
-                .<Result<Subscription, ApplicationError>>map(subscription -> subscriptionPlanRepository.findById(subscription.getPlanId())
-                        .<Result<Subscription, ApplicationError>>map(plan -> {
-                            if (!plan.isActive()) {
-                                return Result.failure(ApplicationError.businessRuleViolation("Inactive plan", "Cannot renew an inactive plan"));
-                            }
-                            var billingPeriod = command.billingPeriod() == null ? subscription.getBillingPeriod() : command.billingPeriod();
-                            var payment = processPayment(subscription, plan, command.paymentMethod(), command.cardToken(),
-                                    command.requestedPaymentStatus(), billingPeriod);
-                            subscription.applyPayment(payment, billingPeriod);
-                            return Result.success(subscriptionRepository.save(subscription));
-                        })
-                        .orElseGet(() -> Result.failure(ApplicationError.notFound("SubscriptionPlan", String.valueOf(subscription.getPlanId())))))
+        return subscriptionRepository.lockById(command.subscriptionId())
+                .<Result<Subscription, ApplicationError>>map(subscription -> {
+                    if (subscription.getStatus() == SubscriptionStatus.CANCELLED
+                            || subscription.isScheduledCancellationDueAt(clock.instant())) {
+                        return Result.failure(ApplicationError.conflict("Subscription", "The subscription is cancelled"));
+                    }
+                    return subscriptionPlanRepository.findById(subscription.getPlanId())
+                            .<Result<Subscription, ApplicationError>>map(plan -> {
+                                if (!plan.isActive()) {
+                                    return Result.failure(ApplicationError.businessRuleViolation("Inactive plan", "Cannot renew an inactive plan"));
+                                }
+                                var billingPeriod = command.billingPeriod() == null ? subscription.getBillingPeriod() : command.billingPeriod();
+                                var payment = processPayment(subscription, plan, command.paymentMethod(), command.cardToken(),
+                                        command.requestedPaymentStatus(), billingPeriod);
+                                subscription.applyPayment(payment, billingPeriod);
+                                return Result.success(subscriptionRepository.save(subscription));
+                            })
+                            .orElseGet(() -> Result.failure(ApplicationError.notFound("SubscriptionPlan", String.valueOf(subscription.getPlanId()))));
+                })
                 .orElseGet(() -> Result.failure(ApplicationError.notFound("Subscription", String.valueOf(command.subscriptionId()))));
     }
 
     @Override
     public Result<Subscription, ApplicationError> handle(CancelSubscriptionCommand command) {
-        return subscriptionRepository.findById(command.subscriptionId())
+        return subscriptionRepository.lockById(command.subscriptionId())
                 .<Result<Subscription, ApplicationError>>map(subscription -> {
+                    if (subscription.getStatus() == SubscriptionStatus.CANCELLED) {
+                        return Result.success(subscription);
+                    }
+                    if (subscription.isScheduledCancellationDueAt(clock.instant())) {
+                        return Result.failure(ApplicationError.conflict("Subscription", "The scheduled cancellation is due"));
+                    }
                     subscription.cancel();
                     return Result.success(subscriptionRepository.save(subscription));
                 })
@@ -97,17 +112,23 @@ public class SubscriptionCommandServiceImpl implements SubscriptionCommandServic
 
     @Override
     public Result<Payment, ApplicationError> handle(ProcessSubscriptionPaymentCommand command) {
-        return subscriptionRepository.findById(command.subscriptionId())
-                .<Result<Payment, ApplicationError>>map(subscription -> subscriptionPlanRepository.findById(subscription.getPlanId())
-                        .<Result<Payment, ApplicationError>>map(plan -> {
-                            var billingPeriod = command.billingPeriod() == null ? subscription.getBillingPeriod() : command.billingPeriod();
-                            var payment = processPayment(subscription, plan, command.paymentMethod(), command.cardToken(),
-                                    command.requestedPaymentStatus(), billingPeriod);
-                            subscription.applyPayment(payment, billingPeriod);
-                            subscriptionRepository.save(subscription);
-                            return Result.success(payment);
-                        })
-                        .orElseGet(() -> Result.failure(ApplicationError.notFound("SubscriptionPlan", String.valueOf(subscription.getPlanId())))))
+        return subscriptionRepository.lockById(command.subscriptionId())
+                .<Result<Payment, ApplicationError>>map(subscription -> {
+                    if (subscription.getStatus() == SubscriptionStatus.CANCELLED
+                            || subscription.isScheduledCancellationDueAt(clock.instant())) {
+                        return Result.failure(ApplicationError.conflict("Subscription", "The subscription is cancelled"));
+                    }
+                    return subscriptionPlanRepository.findById(subscription.getPlanId())
+                            .<Result<Payment, ApplicationError>>map(plan -> {
+                                var billingPeriod = command.billingPeriod() == null ? subscription.getBillingPeriod() : command.billingPeriod();
+                                var payment = processPayment(subscription, plan, command.paymentMethod(), command.cardToken(),
+                                        command.requestedPaymentStatus(), billingPeriod);
+                                subscription.applyPayment(payment, billingPeriod);
+                                subscriptionRepository.save(subscription);
+                                return Result.success(payment);
+                            })
+                            .orElseGet(() -> Result.failure(ApplicationError.notFound("SubscriptionPlan", String.valueOf(subscription.getPlanId()))));
+                })
                 .orElseGet(() -> Result.failure(ApplicationError.notFound("Subscription", String.valueOf(command.subscriptionId()))));
     }
 
