@@ -34,7 +34,7 @@ public class ResendRecoveryEmail {
     }
 
     public boolean available() {
-        return !apiKey.isBlank() && sender.toLowerCase(Locale.ROOT).endsWith("@entreprenly.online")
+        return !apiKey.isBlank() && sender.toLowerCase(Locale.ROOT).endsWith("@avisos.entreprenly.online")
                 && publicBase != null;
     }
 
