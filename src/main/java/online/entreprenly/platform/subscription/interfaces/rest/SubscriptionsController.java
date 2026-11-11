@@ -39,7 +39,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -113,7 +112,6 @@ public class SubscriptionsController {
     })
     public ResponseEntity<SubscriptionResource> getActiveSubscriptionByUserId(@RequestParam Long userId) {
         return subscriptionQueryService.handle(new GetActiveSubscriptionByUserIdQuery(userId))
-                .filter(subscription -> subscription.isActiveAt(Instant.now()))
                 .map(SubscriptionResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -197,8 +195,7 @@ public class SubscriptionsController {
     @ApiResponse(responseCode = "200", description = "Access validation completed")
     public ResponseEntity<AccessValidationResource> validateAccess(@RequestParam Long userId,
                                                                    @RequestParam(required = false) String feature) {
-        var subscription = subscriptionQueryService.handle(new GetActiveSubscriptionByUserIdQuery(userId))
-                .filter(item -> item.isActiveAt(Instant.now()));
+        var subscription = subscriptionQueryService.handle(new GetActiveSubscriptionByUserIdQuery(userId));
         if (subscription.isEmpty()) {
             return ResponseEntity.ok(new AccessValidationResource(userId, feature, false, null, null, null));
         }

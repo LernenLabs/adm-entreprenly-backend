@@ -2,7 +2,6 @@ package online.entreprenly.platform.subscription.application.internal.eventhandl
 
 import online.entreprenly.platform.iam.interfaces.events.UserSignedUpIntegrationEvent;
 import online.entreprenly.platform.subscription.domain.model.aggregates.Subscription;
-import online.entreprenly.platform.subscription.domain.model.valueobjects.SubscriptionStatus;
 import online.entreprenly.platform.subscription.domain.repositories.SubscriptionPlanRepository;
 import online.entreprenly.platform.subscription.domain.repositories.SubscriptionRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +32,7 @@ public class UserSignedUpSubscriptionEventHandler {
     @EventListener
     public void on(UserSignedUpIntegrationEvent event) {
         catalogReadyEventHandler.ensureDefaultPlans();
-        var existingActive = subscriptionRepository.findFirstByUserIdAndStatus(event.userId(), SubscriptionStatus.ACTIVE)
-                .filter(subscription -> subscription.isActiveAt(Instant.now()));
+        var existingActive = subscriptionRepository.findActiveAt(event.userId(), Instant.now());
         if (existingActive.isPresent()) {
             log.warn("User {} already has an active subscription", event.userId());
             return;
