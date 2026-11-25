@@ -15,6 +15,7 @@ public class WeightProductResourceFromEntityAssembler {
                 weightProduct.getDescription(),
                 weightProduct.getCodeQR(),
                 weightProduct.getProductType().getValue(),
-                weightProduct.getPricePerKg());
+                weightProduct.getPricePerKg(),
+                weightProduct.getImageUrl());
     }
 }

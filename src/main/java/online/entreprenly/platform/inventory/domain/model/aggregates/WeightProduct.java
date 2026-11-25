@@ -22,16 +22,19 @@ public class WeightProduct extends AbstractDomainAggregateRoot<WeightProduct> {
     private String description;
     private String codeQR;
     private double pricePerKg;
+    private String imageUrl;
 
     public WeightProduct() {
     }
 
-    public WeightProduct(String ownerEmail, String name, String description, String codeQR, double pricePerKg) {
+    public WeightProduct(String ownerEmail, String name, String description, String codeQR, double pricePerKg,
+                         String imageUrl) {
         this.ownerEmail = ownerEmail;
         this.name = name;
         this.description = description;
         this.codeQR = codeQR;
         this.pricePerKg = pricePerKg;
+        this.imageUrl = imageUrl;
     }
 
     /**
@@ -50,13 +53,16 @@ public class WeightProduct extends AbstractDomainAggregateRoot<WeightProduct> {
      * @param description the new description
      * @param codeQR      the new QR code
      * @param pricePerKg  the new price per kilogram
+     * @param imageUrl    the new public photo URL
      * @return this weight product
      */
-    public WeightProduct updateInfo(String name, String description, String codeQR, double pricePerKg) {
+    public WeightProduct updateInfo(String name, String description, String codeQR, double pricePerKg,
+                                    String imageUrl) {
         this.name = name;
         this.description = description;
         this.codeQR = codeQR;
         this.pricePerKg = pricePerKg;
+        this.imageUrl = imageUrl;
         return this;
     }
 
@@ -65,12 +71,13 @@ public class WeightProduct extends AbstractDomainAggregateRoot<WeightProduct> {
      * a weight product that already carries identity and full state.
      */
     public void restoreState(Long id, String ownerEmail, String name, String description, String codeQR,
-                             double pricePerKg) {
+                             double pricePerKg, String imageUrl) {
         this.id = id;
         this.ownerEmail = ownerEmail;
         this.name = name;
         this.description = description;
         this.codeQR = codeQR;
         this.pricePerKg = pricePerKg;
+        this.imageUrl = imageUrl;
     }
 }

@@ -9,7 +9,8 @@ package online.entreprenly.platform.inventory.domain.model.commands;
  * @param description     the new description
  * @param codeQR          the new QR code
  * @param pricePerKg      the new price per kilogram
+ * @param imageUrl        the new public URL of the product photo
  */
 public record UpdateWeightProductCommand(String ownerEmail, Long weightProductId, String name, String description,
-                                         String codeQR, double pricePerKg) {
+                                         String codeQR, double pricePerKg, String imageUrl) {
 }
