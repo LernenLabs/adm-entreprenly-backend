@@ -25,6 +25,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -37,6 +39,9 @@ import java.util.Set;
  * or name. Existing products keep their name, price and stock; only a missing photo, description,
  * brand or QR code is filled in. A deleted seed product, such as the deletion demo, is created
  * again on the next start so the demo can be repeated.</p>
+ *
+ * <p>Products the demo seller created by hand keep everything they have; if one listed in
+ * {@code EXTRA_PHOTOS} has no photo yet, the seeder gives it one so every demo product shows a photo.</p>
  */
 @Service
 @Slf4j
@@ -148,6 +153,23 @@ public class InventoryDemoDataSeeder {
             COMMONS + "c/c9/Avocado_Hass_-_single_and_halved.jpg/500px-Avocado_Hass_-_single_and_halved.jpg",
             "QR-DEMO-BORRAR-L1", 6);
 
+    /** Photo and description for products created by hand in the demo account, matched by name. */
+    private record ExtraPhoto(String imageUrl, String description) {
+    }
+
+    private static final Map<String, ExtraPhoto> EXTRA_PHOTOS = Map.of(
+            "fanta 500ml", new ExtraPhoto(OFF + "000/004/082/2938/front_en.164.400.jpg",
+                    "Gaseosa Fanta sabor naranja en botella personal de 500 ml."),
+            "leche gloria 2l", new ExtraPhoto(OFF + "775/127/102/8400/front_en.18.400.jpg",
+                    "Leche entera UHT Gloria, lista para tomar. Ideal para toda la familia."),
+            "chocolate", new ExtraPhoto(COMMONS + "c/cc/Chocolate_bar.jpg/500px-Chocolate_bar.jpg",
+                    "Barra de chocolate de leche para el antojo del día."),
+            "fresa fresca", new ExtraPhoto(COMMONS
+                    + "4/4c/Garden_strawberry_%28Fragaria_%C3%97_ananassa%29_single2.jpg/"
+                    + "500px-Garden_strawberry_%28Fragaria_%C3%97_ananassa%29_single2.jpg",
+                    "Fresas frescas y dulces, ideales para jugos y postres. Precio por kilo.")
+    );
+
     private final UnitProductCommandService unitProductCommandService;
     private final WeightProductCommandService weightProductCommandService;
     private final UnitLotCommandService unitLotCommandService;
@@ -199,6 +221,7 @@ public class InventoryDemoDataSeeder {
                 created++;
             }
         }
+        addExtraPhotos(unitProducts, weightProducts);
         log.info("[inventory-seeder] demo catalog ready for {} ({} product(s) created)", DEMO_OWNER_EMAIL, created);
     }
 
@@ -253,6 +276,29 @@ public class InventoryDemoDataSeeder {
                 orElse(product.getCodeQR(), seed.codeQR()),
                 product.getPricePerKg(),
                 orElse(product.getImageUrl(), seed.imageUrl())));
+    }
+
+    /** Gives a photo (and a description when missing) to hand-made demo products listed in EXTRA_PHOTOS. */
+    private void addExtraPhotos(List<UnitProduct> unitProducts, List<WeightProduct> weightProducts) {
+        for (var product : unitProducts) {
+            var extra = extraPhotoFor(product.getName(), product.getImageUrl());
+            if (extra == null) continue;
+            unitProductCommandService.handle(new UpdateUnitProductCommand(DEMO_OWNER_EMAIL, product.getId(),
+                    product.getName(), orElse(product.getDescription(), extra.description()), product.getCodeQR(),
+                    product.getPrice(), product.getWeightGrams(), product.getBrand(), extra.imageUrl()));
+        }
+        for (var product : weightProducts) {
+            var extra = extraPhotoFor(product.getName(), product.getImageUrl());
+            if (extra == null) continue;
+            weightProductCommandService.handle(new UpdateWeightProductCommand(DEMO_OWNER_EMAIL, product.getId(),
+                    product.getName(), orElse(product.getDescription(), extra.description()), product.getCodeQR(),
+                    product.getPricePerKg(), extra.imageUrl()));
+        }
+    }
+
+    private static ExtraPhoto extraPhotoFor(String name, String imageUrl) {
+        if (!isBlank(imageUrl) || name == null) return null;
+        return EXTRA_PHOTOS.get(name.trim().toLowerCase(Locale.ROOT));
     }
 
     private static boolean isComplete(String imageUrl, String description, String codeQR) {
