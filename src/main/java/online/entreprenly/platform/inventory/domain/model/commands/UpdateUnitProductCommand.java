@@ -11,7 +11,9 @@ package online.entreprenly.platform.inventory.domain.model.commands;
  * @param price         the new unit price
  * @param weightGrams   the new per-unit weight in grams
  * @param brand         the new brand
+ * @param imageUrl      the new public URL of the product photo
  */
 public record UpdateUnitProductCommand(String ownerEmail, Long unitProductId, String name, String description,
-                                       String codeQR, double price, double weightGrams, String brand) {
+                                       String codeQR, double price, double weightGrams, String brand,
+                                       String imageUrl) {
 }

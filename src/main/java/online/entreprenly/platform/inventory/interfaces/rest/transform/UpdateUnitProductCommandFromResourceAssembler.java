@@ -18,6 +18,7 @@ public class UpdateUnitProductCommandFromResourceAssembler {
                 resource.codeQR(),
                 resource.price(),
                 resource.weightGrams(),
-                resource.brand());
+                resource.brand(),
+                resource.imageUrl());
     }
 }

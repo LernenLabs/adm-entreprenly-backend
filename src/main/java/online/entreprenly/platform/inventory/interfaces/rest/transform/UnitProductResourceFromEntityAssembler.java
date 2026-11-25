@@ -17,6 +17,7 @@ public class UnitProductResourceFromEntityAssembler {
                 unitProduct.getProductType().getValue(),
                 unitProduct.getPrice(),
                 unitProduct.getWeightGrams(),
-                unitProduct.getBrand());
+                unitProduct.getBrand(),
+                unitProduct.getImageUrl());
     }
 }

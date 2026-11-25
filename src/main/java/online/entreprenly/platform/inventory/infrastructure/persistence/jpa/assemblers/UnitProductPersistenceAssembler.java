@@ -22,7 +22,8 @@ public final class UnitProductPersistenceAssembler {
                 entity.getCodeQR(),
                 entity.getPrice(),
                 entity.getWeightGrams(),
-                entity.getBrand());
+                entity.getBrand(),
+                entity.getImageUrl());
         return unitProduct;
     }
 
@@ -39,6 +40,7 @@ public final class UnitProductPersistenceAssembler {
         entity.setPrice(unitProduct.getPrice());
         entity.setWeightGrams(unitProduct.getWeightGrams());
         entity.setBrand(unitProduct.getBrand());
+        entity.setImageUrl(unitProduct.getImageUrl());
         return entity;
     }
 }

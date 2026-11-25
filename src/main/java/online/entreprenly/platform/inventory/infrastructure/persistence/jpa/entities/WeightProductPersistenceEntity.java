@@ -32,4 +32,7 @@ public class WeightProductPersistenceEntity extends AuditableAbstractPersistence
 
     @Column(name = "price_per_kg", nullable = false)
     private double pricePerKg;
+
+    @Column(name = "image_url", length = 1024)
+    private String imageUrl;
 }

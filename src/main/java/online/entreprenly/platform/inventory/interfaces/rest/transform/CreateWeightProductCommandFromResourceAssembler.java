@@ -15,6 +15,7 @@ public class CreateWeightProductCommandFromResourceAssembler {
                 resource.name(),
                 resource.description(),
                 resource.codeQR(),
-                resource.pricePerKg());
+                resource.pricePerKg(),
+                resource.imageUrl());
     }
 }

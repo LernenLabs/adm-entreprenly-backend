@@ -3,6 +3,7 @@ package online.entreprenly.platform.inventory.interfaces.rest.resources;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 /**
  * Resource received to create a weight product.
@@ -21,6 +22,10 @@ public record CreateWeightProductResource(
 
     @Schema(description = "Price per kilogram", example = "4.2")
     @PositiveOrZero
-    double pricePerKg
+    double pricePerKg,
+
+    @Schema(description = "Public URL of the product photo", example = "https://images.openfoodfacts.org/images/products/775/101/000/2012/front_es.3.400.jpg")
+    @Size(max = 1024)
+    String imageUrl
 ) {
 }

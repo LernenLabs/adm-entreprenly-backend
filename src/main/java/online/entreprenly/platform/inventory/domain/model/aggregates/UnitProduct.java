@@ -26,12 +26,13 @@ public class UnitProduct extends AbstractDomainAggregateRoot<UnitProduct> {
     private double price;
     private double weightGrams;
     private String brand;
+    private String imageUrl;
 
     public UnitProduct() {
     }
 
     public UnitProduct(String ownerEmail, String name, String description, String codeQR, double price,
-                       double weightGrams, String brand) {
+                       double weightGrams, String brand, String imageUrl) {
         this.ownerEmail = ownerEmail;
         this.name = name;
         this.description = description;
@@ -39,6 +40,7 @@ public class UnitProduct extends AbstractDomainAggregateRoot<UnitProduct> {
         this.price = price;
         this.weightGrams = weightGrams;
         this.brand = brand;
+        this.imageUrl = imageUrl;
     }
 
     /**
@@ -59,16 +61,18 @@ public class UnitProduct extends AbstractDomainAggregateRoot<UnitProduct> {
      * @param price       the new unit price
      * @param weightGrams the new per-unit weight in grams
      * @param brand       the new brand
+     * @param imageUrl    the new public photo URL
      * @return this unit product
      */
     public UnitProduct updateInfo(String name, String description, String codeQR, double price,
-                                  double weightGrams, String brand) {
+                                  double weightGrams, String brand, String imageUrl) {
         this.name = name;
         this.description = description;
         this.codeQR = codeQR;
         this.price = price;
         this.weightGrams = weightGrams;
         this.brand = brand;
+        this.imageUrl = imageUrl;
         return this;
     }
 
@@ -77,7 +81,7 @@ public class UnitProduct extends AbstractDomainAggregateRoot<UnitProduct> {
      * a unit product that already carries identity and full state.
      */
     public void restoreState(Long id, String ownerEmail, String name, String description, String codeQR,
-                             double price, double weightGrams, String brand) {
+                             double price, double weightGrams, String brand, String imageUrl) {
         this.id = id;
         this.ownerEmail = ownerEmail;
         this.name = name;
@@ -86,5 +90,6 @@ public class UnitProduct extends AbstractDomainAggregateRoot<UnitProduct> {
         this.price = price;
         this.weightGrams = weightGrams;
         this.brand = brand;
+        this.imageUrl = imageUrl;
     }
 }

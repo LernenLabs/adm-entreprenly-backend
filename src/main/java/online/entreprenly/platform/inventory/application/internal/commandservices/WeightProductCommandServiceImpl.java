@@ -41,7 +41,7 @@ public class WeightProductCommandServiceImpl implements WeightProductCommandServ
                     "A weight product already exists with this QR code"));
         }
         var weightProduct = new WeightProduct(command.ownerEmail(), command.name(), command.description(),
-                command.codeQR(), command.pricePerKg());
+                command.codeQR(), command.pricePerKg(), command.imageUrl());
         return Result.success(weightProductRepository.save(weightProduct));
     }
 
@@ -50,7 +50,7 @@ public class WeightProductCommandServiceImpl implements WeightProductCommandServ
         return weightProductRepository.findByIdAndOwnerEmail(command.weightProductId(), command.ownerEmail())
                 .<Result<WeightProduct, ApplicationError>>map(weightProduct -> {
                     weightProduct.updateInfo(command.name(), command.description(), command.codeQR(),
-                            command.pricePerKg());
+                            command.pricePerKg(), command.imageUrl());
                     return Result.success(weightProductRepository.save(weightProduct));
                 })
                 .orElseGet(() -> Result.failure(

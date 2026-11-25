@@ -41,7 +41,7 @@ public class UnitProductCommandServiceImpl implements UnitProductCommandService 
                     "A unit product already exists with this QR code"));
         }
         var unitProduct = new UnitProduct(command.ownerEmail(), command.name(), command.description(),
-                command.codeQR(), command.price(), command.weightGrams(), command.brand());
+                command.codeQR(), command.price(), command.weightGrams(), command.brand(), command.imageUrl());
         return Result.success(unitProductRepository.save(unitProduct));
     }
 
@@ -50,7 +50,7 @@ public class UnitProductCommandServiceImpl implements UnitProductCommandService 
         return unitProductRepository.findByIdAndOwnerEmail(command.unitProductId(), command.ownerEmail())
                 .<Result<UnitProduct, ApplicationError>>map(unitProduct -> {
                     unitProduct.updateInfo(command.name(), command.description(), command.codeQR(),
-                            command.price(), command.weightGrams(), command.brand());
+                            command.price(), command.weightGrams(), command.brand(), command.imageUrl());
                     return Result.success(unitProductRepository.save(unitProduct));
                 })
                 .orElseGet(() -> Result.failure(

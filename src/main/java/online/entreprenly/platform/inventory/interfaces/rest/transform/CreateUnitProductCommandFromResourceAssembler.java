@@ -17,6 +17,7 @@ public class CreateUnitProductCommandFromResourceAssembler {
                 resource.codeQR(),
                 resource.price(),
                 resource.weightGrams(),
-                resource.brand());
+                resource.brand(),
+                resource.imageUrl());
     }
 }

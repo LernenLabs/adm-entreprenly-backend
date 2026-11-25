@@ -23,6 +23,9 @@ public record WeightProductResource(
     String productType,
 
     @Schema(description = "Price per kilogram", example = "4.2")
-    double pricePerKg
+    double pricePerKg,
+
+    @Schema(description = "Public URL of the product photo", example = "https://images.openfoodfacts.org/images/products/775/101/000/2012/front_es.3.400.jpg")
+    String imageUrl
 ) {
 }
