@@ -8,7 +8,8 @@ package online.entreprenly.platform.inventory.domain.model.commands;
  * @param description the product description
  * @param codeQR      the QR code identifying the product
  * @param pricePerKg  the price per kilogram
+ * @param imageUrl    the public URL of the product photo
  */
 public record CreateWeightProductCommand(String ownerEmail, String name, String description, String codeQR,
-                                         double pricePerKg) {
+                                         double pricePerKg, String imageUrl) {
 }

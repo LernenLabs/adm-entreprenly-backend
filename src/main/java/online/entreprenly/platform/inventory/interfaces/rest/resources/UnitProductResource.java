@@ -29,6 +29,9 @@ public record UnitProductResource(
     double weightGrams,
 
     @Schema(description = "Product brand", example = "Coca-Cola")
-    String brand
+    String brand,
+
+    @Schema(description = "Public URL of the product photo", example = "https://images.openfoodfacts.org/images/products/775/101/000/2012/front_es.3.400.jpg")
+    String imageUrl
 ) {
 }

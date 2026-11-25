@@ -20,7 +20,8 @@ public final class WeightProductPersistenceAssembler {
                 entity.getName(),
                 entity.getDescription(),
                 entity.getCodeQR(),
-                entity.getPricePerKg());
+                entity.getPricePerKg(),
+                entity.getImageUrl());
         return weightProduct;
     }
 
@@ -35,6 +36,7 @@ public final class WeightProductPersistenceAssembler {
         entity.setDescription(weightProduct.getDescription());
         entity.setCodeQR(weightProduct.getCodeQR());
         entity.setPricePerKg(weightProduct.getPricePerKg());
+        entity.setImageUrl(weightProduct.getImageUrl());
         return entity;
     }
 }

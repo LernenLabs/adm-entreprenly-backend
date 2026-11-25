@@ -10,7 +10,9 @@ package online.entreprenly.platform.inventory.domain.model.commands;
  * @param price       the unit price
  * @param weightGrams the per-unit weight in grams
  * @param brand       the product brand
+ * @param imageUrl    the public URL of the product photo
  */
 public record CreateUnitProductCommand(String ownerEmail, String name, String description, String codeQR,
-                                       double price, double weightGrams, String brand) {
+                                       double price, double weightGrams, String brand,
+                                       String imageUrl) {
 }

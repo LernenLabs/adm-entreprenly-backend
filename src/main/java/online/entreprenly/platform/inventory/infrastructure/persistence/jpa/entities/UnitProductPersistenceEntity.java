@@ -38,4 +38,7 @@ public class UnitProductPersistenceEntity extends AuditableAbstractPersistenceEn
 
     @Column(name = "brand", length = 160)
     private String brand;
+
+    @Column(name = "image_url", length = 1024)
+    private String imageUrl;
 }
