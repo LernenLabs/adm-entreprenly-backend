@@ -16,12 +16,12 @@ $link = Get-Content $message.FullName | Select-Object -Last 1
 
 ## Render y Resend
 
-Verificar entreprenly.online en Resend. En el servicio de backend de Render, configurar:
+Verificar avisos.entreprenly.online en Resend. En el servicio de backend de Render, configurar:
 
 | Variable | Valor |
 | --- | --- |
-| RESEND_API_KEY | Clave de solo envío restringida a entreprenly.online. |
-| RESEND_FROM_EMAIL | Dirección de envío del dominio, por ejemplo cuentas@entreprenly.online. |
+| RESEND_API_KEY | Clave de solo envío restringida a avisos.entreprenly.online. |
+| RESEND_FROM_EMAIL | Dirección de envío del dominio, por ejemplo cuentas@avisos.entreprenly.online. |
 | PUBLIC_API_URL | Origen HTTPS público del backend. |
 
 Mantener el perfil cloud. El enlace de Resend abre un formulario HTTPS en el navegador. Tras guardar, el usuario vuelve a Android e inicia sesión con la nueva contraseña. Desactivar el seguimiento de clics del dominio emisor para los enlaces de recuperación. Para abrir directamente la app de producción se necesita un Android App Link verificado con el certificado de distribución.

@@ -9,9 +9,6 @@ import online.entreprenly.platform.subscription.domain.model.queries.GetActiveSu
 import online.entreprenly.platform.subscription.domain.model.queries.GetSubscriptionPlanByIdQuery;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-
-
 @Service
 public class SubscriptionFeatureAccessChecker implements SubscriptionAccessChecker {
 
@@ -32,10 +29,8 @@ public class SubscriptionFeatureAccessChecker implements SubscriptionAccessCheck
         if (ownerEmail == null || ownerEmail.isBlank()) {
             return false;
         }
-        var now = Instant.now();
         return userQueryService.handle(new GetUserByEmailQuery(ownerEmail.trim()))
                 .flatMap(user -> subscriptionQueryService.handle(new GetActiveSubscriptionByUserIdQuery(user.getId()))
-                        .filter(subscription -> subscription.isActiveAt(now))
                         .flatMap(subscription -> subscriptionPlanQueryService.handle(
                                 new GetSubscriptionPlanByIdQuery(subscription.getPlanId()))))
                 .filter(plan -> plan.isActive() && plan.hasFeature(CHATBOT_FEATURE))

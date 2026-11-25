@@ -31,10 +31,14 @@ public class Subscription extends AbstractDomainAggregateRoot<Subscription> {
     }
 
     public Subscription(Long userId, SubscriptionPlan plan) {
+        this(userId, plan, Instant.now());
+    }
+
+    public Subscription(Long userId, SubscriptionPlan plan, Instant startedAt) {
         this.userId = userId;
         this.planId = plan.getId();
         this.status = SubscriptionStatus.PENDING_PAYMENT;
-        this.startedAt = Instant.now();
+        this.startedAt = startedAt;
         this.currentPeriodEnd = null;
         this.cancelledAt = null;
         this.latestPaymentId = null;
@@ -55,9 +59,13 @@ public class Subscription extends AbstractDomainAggregateRoot<Subscription> {
     }
 
     public void activate(BillingPeriod billingPeriod) {
+        activate(billingPeriod, Instant.now());
+    }
+
+    public void activate(BillingPeriod billingPeriod, Instant now) {
         this.billingPeriod = billingPeriod == null ? BillingPeriod.MONTHLY : billingPeriod;
         this.status = SubscriptionStatus.ACTIVE;
-        this.currentPeriodEnd = calculatePeriodEnd(Instant.now(), this.billingPeriod);
+        this.currentPeriodEnd = calculatePeriodEnd(now, this.billingPeriod);
         this.cancelledAt = null;
     }
 
@@ -77,9 +85,23 @@ public class Subscription extends AbstractDomainAggregateRoot<Subscription> {
      * Marks the subscription for cancellation at the end of the current period while keeping it
      * active so the user retains access until {@code currentPeriodEnd}.
      */
-    public void scheduleCancellation() {
-        this.status = SubscriptionStatus.ACTIVE;
-        this.cancelledAt = Instant.now();
+    public void scheduleCancellation(Instant now) {
+        if (isActiveAt(now) && currentPeriodEnd != null && !isCancellationScheduled()) {
+            this.cancelledAt = now;
+        }
+    }
+
+    public boolean isScheduledCancellationDueAt(Instant now) {
+        return isCancellationScheduled() && currentPeriodEnd != null && !currentPeriodEnd.isAfter(now);
+    }
+
+    public boolean completeScheduledCancellation(Instant now) {
+        if (!isScheduledCancellationDueAt(now)) {
+            return false;
+        }
+        // Keep the original cancellation request timestamp for scheduled cancellations.
+        this.status = SubscriptionStatus.CANCELLED;
+        return true;
     }
 
     /**

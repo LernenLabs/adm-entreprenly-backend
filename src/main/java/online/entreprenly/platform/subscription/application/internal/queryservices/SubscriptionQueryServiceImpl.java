@@ -6,11 +6,11 @@ import online.entreprenly.platform.subscription.domain.model.aggregates.Subscrip
 import online.entreprenly.platform.subscription.domain.model.queries.GetActiveSubscriptionByUserIdQuery;
 import online.entreprenly.platform.subscription.domain.model.queries.GetPaymentsBySubscriptionIdQuery;
 import online.entreprenly.platform.subscription.domain.model.queries.GetSubscriptionByIdQuery;
-import online.entreprenly.platform.subscription.domain.model.valueobjects.SubscriptionStatus;
 import online.entreprenly.platform.subscription.domain.repositories.PaymentRepository;
 import online.entreprenly.platform.subscription.domain.repositories.SubscriptionRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,9 +23,13 @@ public class SubscriptionQueryServiceImpl implements SubscriptionQueryService {
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
 
-    public SubscriptionQueryServiceImpl(SubscriptionRepository subscriptionRepository, PaymentRepository paymentRepository) {
+    private final Clock clock;
+
+    public SubscriptionQueryServiceImpl(SubscriptionRepository subscriptionRepository,
+                                        PaymentRepository paymentRepository, Clock clock) {
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
+        this.clock = clock;
     }
 
     @Override
@@ -35,7 +39,7 @@ public class SubscriptionQueryServiceImpl implements SubscriptionQueryService {
 
     @Override
     public Optional<Subscription> handle(GetActiveSubscriptionByUserIdQuery query) {
-        return subscriptionRepository.findFirstByUserIdAndStatus(query.userId(), SubscriptionStatus.ACTIVE);
+        return subscriptionRepository.findActiveAt(query.userId(), clock.instant());
     }
 
     @Override

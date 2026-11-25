@@ -5,17 +5,16 @@ import online.entreprenly.platform.subscription.application.internal.eventhandle
 import online.entreprenly.platform.subscription.domain.model.aggregates.Subscription;
 import online.entreprenly.platform.subscription.domain.model.aggregates.SubscriptionPlan;
 import online.entreprenly.platform.subscription.domain.model.valueobjects.BillingPeriod;
-import online.entreprenly.platform.subscription.domain.model.valueobjects.SubscriptionStatus;
+import online.entreprenly.platform.subscription.application.internal.commandservices.DashboardPlanCommandService;
+import online.entreprenly.platform.subscription.application.queryservices.SubscriptionQueryService;
+import online.entreprenly.platform.subscription.domain.model.queries.GetActiveSubscriptionByUserIdQuery;
 import online.entreprenly.platform.subscription.domain.repositories.BillingSetupRepository;
 import online.entreprenly.platform.subscription.domain.repositories.SubscriptionPlanRepository;
-import online.entreprenly.platform.subscription.domain.repositories.SubscriptionRepository;
-import online.entreprenly.platform.subscription.interfaces.events.SubscriptionPlanChangedIntegrationEvent;
 import online.entreprenly.platform.subscription.interfaces.rest.resources.SubscriptionDashboardResource;
 import online.entreprenly.platform.subscription.interfaces.rest.transform.DashboardBillingSetupAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -44,23 +42,23 @@ public class SubscriptionDashboardController {
 
     private final SubscriptionCatalogReadyEventHandler catalogReadyEventHandler;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
-    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionQueryService subscriptionQueryService;
     private final BillingSetupRepository billingSetupRepository;
     private final IamContextFacade iamContextFacade;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DashboardPlanCommandService dashboardPlanCommandService;
 
     public SubscriptionDashboardController(SubscriptionCatalogReadyEventHandler catalogReadyEventHandler,
                                            SubscriptionPlanRepository subscriptionPlanRepository,
-                                           SubscriptionRepository subscriptionRepository,
+                                           SubscriptionQueryService subscriptionQueryService,
                                            BillingSetupRepository billingSetupRepository,
                                            IamContextFacade iamContextFacade,
-                                           ApplicationEventPublisher eventPublisher) {
+                                           DashboardPlanCommandService dashboardPlanCommandService) {
         this.catalogReadyEventHandler = catalogReadyEventHandler;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
-        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionQueryService = subscriptionQueryService;
         this.billingSetupRepository = billingSetupRepository;
         this.iamContextFacade = iamContextFacade;
-        this.eventPublisher = eventPublisher;
+        this.dashboardPlanCommandService = dashboardPlanCommandService;
     }
 
     /**
@@ -103,7 +101,14 @@ public class SubscriptionDashboardController {
         if (resource != null && resource.billingSetup() != null) {
             saveBillingSetup(resolvedUserId, resource.billingSetup());
         }
-        applyPlanChange(resolvedUserId, resource);
+        if (resource != null && resource.currentPlan() != null) {
+            catalogReadyEventHandler.ensureDefaultPlans();
+            var billingPeriod = "annual".equalsIgnoreCase(resource.defaultBillingCycle())
+                    ? BillingPeriod.YEARLY
+                    : BillingPeriod.MONTHLY;
+            dashboardPlanCommandService.changePlan(resolvedUserId, resource.currentPlan().id(),
+                    resource.currentPlan().status(), billingPeriod);
+        }
         return ResponseEntity.ok(toDashboard(resolvedUserId, false));
     }
 
@@ -117,80 +122,6 @@ public class SubscriptionDashboardController {
         billingSetupRepository.findByUserId(userId)
                 .ifPresent(existing -> billingSetup.setId(existing.getId()));
         billingSetupRepository.save(billingSetup);
-    }
-
-    /**
-     * Persists the plan change implied by the dashboard the Angular client saves. Payment data is
-     * intentionally not validated (simulated purchase): activating Plan Control immediately
-     * activates a subscription with the requested billing period.
-     */
-    private void applyPlanChange(Long userId, SubscriptionDashboardResource resource) {
-        if (resource == null || resource.currentPlan() == null) {
-            return;
-        }
-        catalogReadyEventHandler.ensureDefaultPlans();
-        var freePlan = subscriptionPlanRepository.findByCode(SubscriptionCatalogReadyEventHandler.FREE_PLAN_CODE)
-                .orElseThrow();
-        var controlPlan = subscriptionPlanRepository.findByCode(SubscriptionCatalogReadyEventHandler.CONTROL_PLAN_CODE)
-                .orElseThrow();
-        var targetCode = resource.currentPlan().id();
-        var targetStatus = resource.currentPlan().status();
-        var billingPeriod = "annual".equalsIgnoreCase(resource.defaultBillingCycle())
-                ? BillingPeriod.YEARLY
-                : BillingPeriod.MONTHLY;
-        var activeSubscription = subscriptionRepository.findFirstByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .filter(subscription -> subscription.isActiveAt(Instant.now()));
-
-        if (SubscriptionCatalogReadyEventHandler.CONTROL_PLAN_CODE.equals(targetCode)) {
-            var currentControl = activeSubscription
-                    .filter(subscription -> controlPlan.getId().equals(subscription.getPlanId()));
-            if (currentControl.isPresent()) {
-                var subscription = currentControl.get();
-                if ("scheduled-cancellation".equals(targetStatus)) {
-                    subscription.scheduleCancellation();
-                } else {
-                    subscription.resumeActive();
-                }
-                subscriptionRepository.save(subscription);
-                publishPlanChanged(userId, controlPlan);
-                return;
-            }
-            activeSubscription.ifPresent(subscription -> {
-                subscription.cancel();
-                subscriptionRepository.save(subscription);
-            });
-            var subscription = new Subscription(userId, controlPlan);
-            subscription.activate(billingPeriod);
-            subscriptionRepository.save(subscription);
-            publishPlanChanged(userId, controlPlan);
-            return;
-        }
-
-        if (SubscriptionCatalogReadyEventHandler.FREE_PLAN_CODE.equals(targetCode)) {
-            var onFree = activeSubscription
-                    .filter(subscription -> freePlan.getId().equals(subscription.getPlanId()))
-                    .isPresent();
-            activeSubscription
-                    .filter(subscription -> !freePlan.getId().equals(subscription.getPlanId()))
-                    .ifPresent(subscription -> {
-                        subscription.cancel();
-                        subscriptionRepository.save(subscription);
-                    });
-            if (!onFree) {
-                var subscription = new Subscription(userId, freePlan);
-                subscription.activateWithoutExpiration();
-                subscriptionRepository.save(subscription);
-            }
-            publishPlanChanged(userId, freePlan);
-        }
-    }
-
-    /**
-     * Publishes the Subscription context's integration event so other bounded contexts (e.g.
-     * Profile) can react to a plan change without coupling to the subscription domain.
-     */
-    private void publishPlanChanged(Long userId, SubscriptionPlan plan) {
-        eventPublisher.publishEvent(new SubscriptionPlanChangedIntegrationEvent(userId, plan.getName()));
     }
 
     @GetMapping("/subscription-payment-confirmation/{userId}")
@@ -210,8 +141,7 @@ public class SubscriptionDashboardController {
                 .orElseThrow();
         var controlPlan = subscriptionPlanRepository.findByCode(SubscriptionCatalogReadyEventHandler.CONTROL_PLAN_CODE)
                 .orElseThrow();
-        var activeSubscription = subscriptionRepository.findFirstByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .filter(subscription -> subscription.isActiveAt(Instant.now()));
+        var activeSubscription = subscriptionQueryService.handle(new GetActiveSubscriptionByUserIdQuery(userId));
         var currentPlan = forceControlPlan
                 ? toControlPlan(controlPlan, activeSubscription, false)
                 : activeSubscription
