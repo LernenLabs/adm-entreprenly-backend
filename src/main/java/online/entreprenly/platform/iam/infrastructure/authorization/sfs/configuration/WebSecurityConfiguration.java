@@ -3,6 +3,7 @@ package online.entreprenly.platform.iam.infrastructure.authorization.sfs.configu
 import online.entreprenly.platform.iam.infrastructure.authorization.sfs.pipeline.BearerAuthorizationRequestFilter;
 import online.entreprenly.platform.iam.infrastructure.hashing.bcrypt.BCryptHashingService;
 import online.entreprenly.platform.iam.infrastructure.tokens.jwt.BearerTokenService;
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -102,6 +103,8 @@ public class WebSecurityConfiguration {
                 .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(unauthorizedRequestHandler))
                 .sessionManagement( customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
+                        // Product photos are public to read; uploading them still requires a JWT.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/inventory-product-images/*").permitAll()
                         .requestMatchers(
                                 "/api/v1/authentication/**",
                                 "/api/v1/users/me/email-change-requests/confirm/*/*",
