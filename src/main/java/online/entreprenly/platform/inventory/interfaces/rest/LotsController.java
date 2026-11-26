@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,7 +50,7 @@ public class LotsController {
     )
     @ApiResponse(responseCode = "200", description = "Lots found")
     public ResponseEntity<List<LotResource>> getAllLots(@AuthenticationPrincipal UserDetails userDetails) {
-        var resources = lotQueryService.handle(new GetAllLotsQuery(userDetails.getUsername())).stream()
+        var resources = lotQueryService.handle(new GetAllLotsQuery(UserDetailsImpl.ownerEmail(userDetails))).stream()
                 .map(LotResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
@@ -68,7 +69,7 @@ public class LotsController {
     })
     public ResponseEntity<LotResource> getLotById(@AuthenticationPrincipal UserDetails userDetails,
                                                   @PathVariable Long lotId) {
-        return lotQueryService.handle(new GetLotByIdQuery(userDetails.getUsername(), lotId))
+        return lotQueryService.handle(new GetLotByIdQuery(UserDetailsImpl.ownerEmail(userDetails), lotId))
                 .map(LotResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -65,7 +66,7 @@ public class CashRegistersController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Long sellerId) {
 
-        var query = new GetCashRegisterByDateQuery(userDetails.getUsername(), sellerId, date);
+        var query = new GetCashRegisterByDateQuery(UserDetailsImpl.ownerEmail(userDetails), sellerId, date);
         var cashRegister = cashRegisterQueryService.handle(query);
         return ResponseEntity.ok(CashRegisterResourceFromEntityAssembler.toResourceFromEntity(cashRegister));
     }

@@ -1,8 +1,7 @@
 package online.entreprenly.platform.chatbot.infrastructure.acl;
 
 import online.entreprenly.platform.chatbot.application.internal.outboundservices.acl.SubscriptionAccessChecker;
-import online.entreprenly.platform.iam.application.queryservices.UserQueryService;
-import online.entreprenly.platform.iam.domain.model.queries.GetUserByEmailQuery;
+import online.entreprenly.platform.iam.domain.repositories.UserRepository;
 import online.entreprenly.platform.subscription.application.queryservices.SubscriptionPlanQueryService;
 import online.entreprenly.platform.subscription.application.queryservices.SubscriptionQueryService;
 import online.entreprenly.platform.subscription.domain.model.queries.GetActiveSubscriptionByUserIdQuery;
@@ -12,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class SubscriptionFeatureAccessChecker implements SubscriptionAccessChecker {
 
-    private final UserQueryService userQueryService;
+    private final UserRepository users;
     private final SubscriptionQueryService subscriptionQueryService;
     private final SubscriptionPlanQueryService subscriptionPlanQueryService;
 
-    public SubscriptionFeatureAccessChecker(UserQueryService userQueryService,
+    public SubscriptionFeatureAccessChecker(UserRepository users,
                                             SubscriptionQueryService subscriptionQueryService,
                                             SubscriptionPlanQueryService subscriptionPlanQueryService) {
-        this.userQueryService = userQueryService;
+        this.users = users;
         this.subscriptionQueryService = subscriptionQueryService;
         this.subscriptionPlanQueryService = subscriptionPlanQueryService;
     }
@@ -29,7 +28,7 @@ public class SubscriptionFeatureAccessChecker implements SubscriptionAccessCheck
         if (ownerEmail == null || ownerEmail.isBlank()) {
             return false;
         }
-        return userQueryService.handle(new GetUserByEmailQuery(ownerEmail.trim()))
+        return users.findByOwnerEmail(ownerEmail.trim())
                 .flatMap(user -> subscriptionQueryService.handle(new GetActiveSubscriptionByUserIdQuery(user.getId()))
                         .flatMap(subscription -> subscriptionPlanQueryService.handle(
                                 new GetSubscriptionPlanByIdQuery(subscription.getPlanId()))))

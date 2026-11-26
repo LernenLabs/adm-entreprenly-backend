@@ -80,7 +80,7 @@ public class ProfileVerificationController {
             Authentication authentication) {
         if (ownedProfile(id, authentication) == null) return profileNotFound();
         var code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
-        return verification.issue("phone:" + id, request.phone(), code, code);
+        return verification.issueSms("phone:" + id, smsNumber(request.phone()), code);
     }
 
     @PostMapping("/profiles/{id}/phone-verifications/confirm")
@@ -90,11 +90,16 @@ public class ProfileVerificationController {
         var profile = ownedProfile(id, authentication);
         if (profile == null) return profileNotFound();
         var key = "phone:" + id;
-        var check = verification.check(key, request.phone(), request.code());
+        var check = verification.check(key, smsNumber(request.phone()), request.code());
         if (check.error() != null) return check.error();
         profile.setPhone(check.destination());
         verification.consume(key);
         return ResponseEntity.ok(toResource(profile));
+    }
+
+    private static String smsNumber(String phone) {
+        // Peruvian mobile numbers may be entered without their country code.
+        return phone.matches("9[0-9]{8}") ? "+51" + phone : phone;
     }
 
     private ProfilePersistenceEntity ownedProfile(long id, Authentication authentication) {

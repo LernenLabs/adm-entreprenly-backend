@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class UserDetailsImpl implements UserDetails {
 
     private final String username;
+    private final String merchantOwnerEmail;
     @JsonIgnore
     private final String password;
     private final boolean accountNonExpired;
@@ -34,8 +35,10 @@ public class UserDetailsImpl implements UserDetails {
      * @param password The password.
      * @param authorities The authorities.
      */
-    public UserDetailsImpl(String username, String password, Collection<? extends GrantedAuthority> authorities) {
+    private UserDetailsImpl(String username, String merchantOwnerEmail, String password,
+            Collection<? extends GrantedAuthority> authorities) {
         this.username = username;
+        this.merchantOwnerEmail = merchantOwnerEmail;
         this.password = password;
         this.authorities = authorities;
         this.accountNonExpired = true;
@@ -44,11 +47,10 @@ public class UserDetailsImpl implements UserDetails {
         this.enabled = true;
     }
 
-    /**
-     * This method is responsible for building the UserDetailsImpl object from the User object.
-     * @param user The user object.
-     * @return The UserDetailsImpl object.
-     */
+    public static String ownerEmail(UserDetails principal) {
+        return principal instanceof UserDetailsImpl user ? user.merchantOwnerEmail : principal.getUsername();
+    }
+
     public static UserDetailsImpl build(User user) {
         var authorities = user.getRoles().stream()
                 .map(role -> role.getName().name())
@@ -56,6 +58,7 @@ public class UserDetailsImpl implements UserDetails {
                 .collect(Collectors.toList());
         return new UserDetailsImpl(
                 user.getEmail(),
+                user.ownerEmail(),
                 user.getPassword(),
                 authorities);
     }

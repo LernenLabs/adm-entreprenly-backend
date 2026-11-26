@@ -18,6 +18,8 @@ public final class UserPersistenceAssembler {
         var domain = new User();
         domain.setId(entity.getId());
         domain.setEmail(entity.getEmail());
+        domain.setMerchantOwnerEmail(entity.getMerchantOwnerEmail());
+        domain.setEmailVerifiedAt(entity.getEmailVerifiedAt());
         domain.setPassword(entity.getPassword());
         domain.setSessionVersion(entity.getSessionVersion());
         domain.setRetainedSessionId(entity.getRetainedSessionId());
@@ -36,6 +38,8 @@ public final class UserPersistenceAssembler {
             entity.setId(user.getId());
         }
         entity.setEmail(user.getEmail());
+        entity.setMerchantOwnerEmail(user.getMerchantOwnerEmail());
+        entity.setEmailVerifiedAt(user.getEmailVerifiedAt());
         entity.setPassword(user.getPassword());
         entity.setSessionVersion(user.getSessionVersion());
         entity.setRetainedSessionId(user.getRetainedSessionId());

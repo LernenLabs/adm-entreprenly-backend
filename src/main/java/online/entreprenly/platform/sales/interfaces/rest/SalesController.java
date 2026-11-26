@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -65,7 +66,7 @@ public class SalesController {
     public ResponseEntity<?> createSale(@AuthenticationPrincipal UserDetails userDetails,
                                         @Valid @RequestBody CreateSaleResource resource) {
         var command = CreateSaleCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), resource);
+                UserDetailsImpl.ownerEmail(userDetails), resource);
         var result = saleCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, SaleResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
@@ -81,7 +82,7 @@ public class SalesController {
     public ResponseEntity<List<SaleResource>> getAllSales(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        var owner = userDetails.getUsername();
+        var owner = UserDetailsImpl.ownerEmail(userDetails);
         var sales = (date != null
                 ? saleQueryService.handle(new GetSalesByDateQuery(owner, date))
                 : saleQueryService.handle(new GetAllSalesQuery(owner)))
@@ -104,7 +105,7 @@ public class SalesController {
     })
     public ResponseEntity<SaleResource> getSaleById(@AuthenticationPrincipal UserDetails userDetails,
                                                     @PathVariable Long saleId) {
-        return saleQueryService.handle(new GetSaleByIdQuery(userDetails.getUsername(), saleId))
+        return saleQueryService.handle(new GetSaleByIdQuery(UserDetailsImpl.ownerEmail(userDetails), saleId))
                 .map(SaleResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

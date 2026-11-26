@@ -44,17 +44,9 @@ public class ResendRecoveryEmail {
 
     public void send(String recipient, String link) {
         try {
-            var request = HttpRequest.newBuilder(ENDPOINT)
-                    .timeout(Duration.ofSeconds(10))
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of(
-                            "from", sender,
-                            "to", List.of(recipient),
-                            "subject", "Recupera tu contraseña de Entreprenly",
-                            "text", "Abre este enlace para restablecer tu contraseña de Entreprenly. "
-                                    + "Vence en 10 minutos. Si no lo solicitaste, ignora este correo.\n\n" + link))))
-                    .build();
+            var request = request(recipient, "Recupera tu contraseña de Entreprenly",
+                    "Abre este enlace para restablecer tu contraseña de Entreprenly. "
+                            + "Vence en 10 minutos. Si no lo solicitaste, ignora este correo.", link);
             client.sendAsync(request, HttpResponse.BodyHandlers.discarding()).whenComplete((response, error) -> {
                 if (error != null) log.warn("Could not reach Resend for a password recovery email.");
                 else if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -64,6 +56,32 @@ public class ResendRecoveryEmail {
         } catch (RuntimeException ex) {
             log.warn("Could not prepare the Resend password recovery request.");
         }
+    }
+
+    public boolean sendEmailChange(String recipient, String link) {
+        try {
+            var request = request(recipient, "Confirma tu correo de Entreprenly",
+                    "Abre este enlace para confirmar el cambio de correo. "
+                            + "Vence en 10 minutos. Si no lo solicitaste, ignora este correo.", link);
+            int status = client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+            if (status >= 200 && status < 300) return true;
+            log.warn("Resend rejected an email change request (HTTP {}).", status);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } catch (java.io.IOException | RuntimeException ex) {
+            log.warn("Could not send an email change request through Resend.");
+        }
+        return false;
+    }
+
+    private HttpRequest request(String recipient, String subject, String text, String link) {
+        return HttpRequest.newBuilder(ENDPOINT).timeout(Duration.ofSeconds(8))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of(
+                        "from", sender, "to", List.of(recipient), "subject", subject,
+                        "text", text + "\n\n" + link))))
+                .build();
     }
 
     private static URI httpsOrigin(String value) {

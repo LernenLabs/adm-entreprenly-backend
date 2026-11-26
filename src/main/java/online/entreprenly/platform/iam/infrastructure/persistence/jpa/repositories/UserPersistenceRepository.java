@@ -26,6 +26,9 @@ public interface UserPersistenceRepository extends JpaRepository<UserPersistence
     Optional<UserPersistenceEntity> findOneById(Long id);
 
     boolean existsByEmailIgnoreCase(String email);
+    boolean existsByMerchantOwnerEmailIgnoreCase(String email);
+    boolean existsByMerchantOwnerEmailIgnoreCaseAndIdNot(String email, Long id);
+    Optional<UserPersistenceEntity> findByMerchantOwnerEmailIgnoreCase(String email);
 
     /**
      * This method is responsible for checking if the user exists by email.

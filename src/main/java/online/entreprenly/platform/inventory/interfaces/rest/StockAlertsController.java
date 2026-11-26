@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,7 +50,7 @@ public class StockAlertsController {
     @ApiResponse(responseCode = "200", description = "Stock alerts computed")
     public ResponseEntity<List<StockAlertResource>> getAllStockAlerts(
             @AuthenticationPrincipal UserDetails userDetails) {
-        var resources = stockAlertQueryService.handle(new GetAllStockAlertsQuery(userDetails.getUsername())).stream()
+        var resources = stockAlertQueryService.handle(new GetAllStockAlertsQuery(UserDetailsImpl.ownerEmail(userDetails))).stream()
                 .map(StockAlertResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
@@ -68,7 +69,7 @@ public class StockAlertsController {
     })
     public ResponseEntity<StockAlertResource> getStockAlertById(@AuthenticationPrincipal UserDetails userDetails,
                                                                 @PathVariable Long stockAlertId) {
-        return stockAlertQueryService.handle(new GetStockAlertByIdQuery(userDetails.getUsername(), stockAlertId))
+        return stockAlertQueryService.handle(new GetStockAlertByIdQuery(UserDetailsImpl.ownerEmail(userDetails), stockAlertId))
                 .map(StockAlertResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,7 +69,7 @@ public class UnitProductsController {
     public ResponseEntity<?> createUnitProduct(@AuthenticationPrincipal UserDetails userDetails,
                                                @Valid @RequestBody CreateUnitProductResource resource) {
         var command = CreateUnitProductCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), resource);
+                UserDetailsImpl.ownerEmail(userDetails), resource);
         var result = unitProductCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, UnitProductResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
@@ -83,7 +84,7 @@ public class UnitProductsController {
     @ApiResponse(responseCode = "200", description = "Unit products found")
     public ResponseEntity<List<UnitProductResource>> getAllUnitProducts(
             @AuthenticationPrincipal UserDetails userDetails) {
-        var resources = unitProductQueryService.handle(new GetAllUnitProductsQuery(userDetails.getUsername())).stream()
+        var resources = unitProductQueryService.handle(new GetAllUnitProductsQuery(UserDetailsImpl.ownerEmail(userDetails))).stream()
                 .map(UnitProductResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
@@ -102,7 +103,7 @@ public class UnitProductsController {
     })
     public ResponseEntity<UnitProductResource> getUnitProductById(@AuthenticationPrincipal UserDetails userDetails,
                                                                   @PathVariable Long unitProductId) {
-        return unitProductQueryService.handle(new GetUnitProductByIdQuery(userDetails.getUsername(), unitProductId))
+        return unitProductQueryService.handle(new GetUnitProductByIdQuery(UserDetailsImpl.ownerEmail(userDetails), unitProductId))
                 .map(UnitProductResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -124,7 +125,7 @@ public class UnitProductsController {
                                                @PathVariable Long unitProductId,
                                                @Valid @RequestBody UpdateUnitProductResource resource) {
         var command = UpdateUnitProductCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), unitProductId, resource);
+                UserDetailsImpl.ownerEmail(userDetails), unitProductId, resource);
         var result = unitProductCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, UnitProductResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
@@ -143,7 +144,7 @@ public class UnitProductsController {
     public ResponseEntity<?> deleteUnitProduct(@AuthenticationPrincipal UserDetails userDetails,
                                                @PathVariable Long unitProductId) {
         var result = unitProductCommandService.handle(
-                new DeleteUnitProductCommand(userDetails.getUsername(), unitProductId));
+                new DeleteUnitProductCommand(UserDetailsImpl.ownerEmail(userDetails), unitProductId));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, id -> null, HttpStatus.NO_CONTENT);
     }

@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -75,7 +76,7 @@ public class IotScaleController {
     public ResponseEntity<IotScaleStatusResource> getScaleStatus(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        var result = iotScaleQueryService.handle(new GetScaleStatusQuery(userDetails.getUsername()));
+        var result = iotScaleQueryService.handle(new GetScaleStatusQuery(UserDetailsImpl.ownerEmail(userDetails)));
         return result.toOptional()
                 .map(status -> new IotScaleStatusResource(status == ScaleStatus.CONNECTED))
                 .map(ResponseEntity::ok)
@@ -118,7 +119,7 @@ public class IotScaleController {
     public ResponseEntity<?> getScaleWeight(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        var result = iotScaleQueryService.handle(new GetScaleWeightQuery(userDetails.getUsername()));
+        var result = iotScaleQueryService.handle(new GetScaleWeightQuery(UserDetailsImpl.ownerEmail(userDetails)));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
                 weightKg -> new IotScaleWeightResource(weightKg, "kg"),
