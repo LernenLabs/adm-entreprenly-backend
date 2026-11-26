@@ -21,6 +21,7 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
     private String firstName;
     private String lastName;
     private String phone;
+    private java.time.Instant phoneVerifiedAt;
     private String avatarUrl;
     private String biography;
     private String role;
@@ -61,6 +62,7 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
                                  String biography) {
         this.firstName = firstName;
         this.lastName = lastName;
+        if (!java.util.Objects.equals(this.phone, phone)) this.phoneVerifiedAt = null;
         this.phone = phone;
         this.avatarUrl = avatarUrl;
         this.biography = biography;
@@ -107,8 +109,9 @@ public class Profile extends AbstractDomainAggregateRoot<Profile> {
     public void restoreState(Long id, Long userId, String firstName, String lastName, String phone,
                              String avatarUrl, String biography, String role, String plan,
                              Preferences preferences,
-                             NotificationSettings notificationSettings) {
+                             NotificationSettings notificationSettings, java.time.Instant phoneVerifiedAt) {
         this.id = id;
+        this.phoneVerifiedAt = phoneVerifiedAt;
         this.userId = userId;
         this.firstName = firstName;
         this.lastName = lastName;

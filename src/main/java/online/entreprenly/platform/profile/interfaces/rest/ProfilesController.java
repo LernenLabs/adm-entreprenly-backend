@@ -45,11 +45,14 @@ public class ProfilesController {
 
     private final ProfileCommandService profileCommandService;
     private final ProfileQueryService profileQueryService;
+    private final ProfileResourceFromEntityAssembler resources;
     private final online.entreprenly.platform.iam.domain.repositories.UserRepository users;
 
     public ProfilesController(ProfileCommandService profileCommandService, ProfileQueryService profileQueryService,
-                              online.entreprenly.platform.iam.domain.repositories.UserRepository users) {
+                              online.entreprenly.platform.iam.domain.repositories.UserRepository users,
+                              ProfileResourceFromEntityAssembler resources) {
         this.users = users;
+        this.resources = resources;
         this.profileCommandService = profileCommandService;
         this.profileQueryService = profileQueryService;
     }
@@ -72,7 +75,7 @@ public class ProfilesController {
         var command = CreateProfileCommandFromResourceAssembler.toCommandFromResource(resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
-                result, ProfileResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
+                result, resources::toResourceFromEntity, HttpStatus.CREATED);
     }
 
     @GetMapping("/{profileId}")
@@ -89,7 +92,7 @@ public class ProfilesController {
     public ResponseEntity<ProfileResource> getProfileById(@PathVariable Long profileId, org.springframework.security.core.Authentication authentication) {
         return profileQueryService.handle(new GetProfileByIdQuery(profileId))
                 .filter(profile -> owns(profile.getUserId(), authentication))
-                .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                .map(resources::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -108,7 +111,7 @@ public class ProfilesController {
     public ResponseEntity<ProfileResource> getProfileByUserId(@RequestParam Long userId, org.springframework.security.core.Authentication authentication) {
         if (!owns(userId, authentication)) return ResponseEntity.notFound().build();
         return profileQueryService.handle(new GetProfileByUserIdQuery(userId))
-                .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                .map(resources::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -134,7 +137,7 @@ public class ProfilesController {
         var command = UpdateProfileCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
-                result, ProfileResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
+                result, resources::toResourceFromEntity, HttpStatus.OK);
     }
 
     @PutMapping("/{profileId}/preferences")
@@ -158,7 +161,7 @@ public class ProfilesController {
         var command = UpdatePreferencesCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
-                result, ProfileResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
+                result, resources::toResourceFromEntity, HttpStatus.OK);
     }
 
     @PutMapping("/{profileId}/notification-settings")
@@ -182,7 +185,7 @@ public class ProfilesController {
         var command = UpdateNotificationSettingsCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
         var result = profileCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
-                result, ProfileResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
+                result, resources::toResourceFromEntity, HttpStatus.OK);
     }
     private boolean owns(Long userId, org.springframework.security.core.Authentication authentication) {
         return users.findByEmail(authentication.getName()).filter(user -> userId.equals(user.getId())).isPresent();
