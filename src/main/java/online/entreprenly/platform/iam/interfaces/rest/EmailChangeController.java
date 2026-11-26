@@ -41,7 +41,11 @@ public class EmailChangeController {
         var user = users.findOneByEmail(authentication.getName()).orElse(null);
         if (user == null) return VerificationChallenges.error(HttpStatus.UNAUTHORIZED, "Sign in again.");
         var email = resource.email().trim().toLowerCase(Locale.ROOT);
-        if (unavailable(email, user.getId())) {
+        if (user.getEmail().equalsIgnoreCase(email)) {
+            if (user.getEmailVerifiedAt() != null) {
+                return VerificationChallenges.error(HttpStatus.CONFLICT, "This email is already verified.");
+            }
+        } else if (unavailable(email, user.getId())) {
             return VerificationChallenges.error(HttpStatus.CONFLICT, "The email address is already in use.");
         }
         var token = UUID.randomUUID();
@@ -61,7 +65,7 @@ public class EmailChangeController {
     public ResponseEntity<String> showConfirmation(@PathVariable long id, @PathVariable UUID token) {
         var user = users.findById(id).orElse(null);
         if (!valid(user, token)) return expiredPage();
-        return page(HttpStatus.OK, "<form method=\"post\"><button type=\"submit\">Confirmar cambio de correo</button></form>");
+        return page(HttpStatus.OK, "<form method=\"post\"><button type=\"submit\">Verificar correo</button></form>");
     }
 
     @PostMapping(value = "/confirm/{id}/{token}", produces = MediaType.TEXT_HTML_VALUE)
@@ -71,6 +75,11 @@ public class EmailChangeController {
         if (user == null) return expiredPage();
         var check = verification.checkLink(key(user), null, versionedToken(user, token));
         if (check.error() != null) return expiredPage();
+        if (user.getEmail().equalsIgnoreCase(check.destination())) {
+            user.setEmailVerifiedAt(Instant.now());
+            verification.consume(key(user));
+            return page(HttpStatus.OK, "<p>Correo verificado. Ya puedes volver a Entreprenly.</p>");
+        }
         if (unavailable(check.destination(), user.getId())) {
             return emailInUse();
         }

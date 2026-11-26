@@ -128,6 +128,42 @@ class ProfileAcceptanceTest {
         mvc.perform(get(url)).andExpect(status().isOk()).andExpect(content().bytes(bytes.toByteArray()));
     }
 
+    @Test
+    void phoneAndCurrentEmailKeepTheirVerificationStateAfterReload() throws Exception {
+        String email = "verify-current@example.com";
+        register(email);
+        var session = signIn(email, PASSWORD);
+        String profileQuery = "/api/v1/profiles?userId=" + session.id();
+        var raw = mvc.perform(get(profileQuery).header("Authorization", session.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phoneVerified").value(false))
+                .andExpect(jsonPath("$.emailVerified").value(false))
+                .andReturn().getResponse().getContentAsString();
+        long profileId = json.readTree(raw).get("id").asLong();
+        String phoneRoute = "/api/v1/profiles/" + profileId + "/phone-verifications";
+        String phone = "+51999000123";
+        Path phoneInbox = Path.of("target/profile-acceptance-inbox/phone-" + profileId + ".txt");
+        Path emailInbox = Path.of("target/profile-acceptance-inbox/email-" + session.id() + ".txt");
+        try {
+            mvc.perform(json(post(phoneRoute).header("Authorization", session.bearer()),
+                    "{\"phone\":\"" + phone + "\"}")).andExpect(status().isAccepted());
+            String code = Files.readAllLines(phoneInbox).getLast();
+            mvc.perform(json(post(phoneRoute + "/confirm").header("Authorization", session.bearer()),
+                    "{\"phone\":\"" + phone + "\",\"code\":\"" + code + "\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.phoneVerified").value(true));
+
+            requestEmail(session, email);
+            mvc.perform(post(confirmationPath(emailInbox))).andExpect(status().isOk());
+            mvc.perform(get(profileQuery).header("Authorization", session.bearer())).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.phone").value(phone))
+                    .andExpect(jsonPath("$.phoneVerified").value(true))
+                    .andExpect(jsonPath("$.emailVerified").value(true));
+        } finally {
+            Files.deleteIfExists(phoneInbox);
+            Files.deleteIfExists(emailInbox);
+        }
+    }
+
     private void register(String email) throws Exception {
         mvc.perform(json(post(AUTH + "/sign-up"), credentials(email, PASSWORD)))
                 .andExpect(status().isCreated());

@@ -61,7 +61,7 @@ public class ResendRecoveryEmail {
     public boolean sendEmailChange(String recipient, String link) {
         try {
             var request = request(recipient, "Confirma tu correo de Entreprenly",
-                    "Abre este enlace para confirmar el cambio de correo. "
+                    "Abre este enlace para verificar tu correo. "
                             + "Vence en 10 minutos. Si no lo solicitaste, ignora este correo.", link);
             int status = client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
             if (status >= 200 && status < 300) return true;
