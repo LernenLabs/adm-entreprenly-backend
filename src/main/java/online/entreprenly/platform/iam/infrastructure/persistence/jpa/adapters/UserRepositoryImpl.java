@@ -37,6 +37,12 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public Optional<User> findByOwnerEmail(String email) {
+        return userPersistenceRepository.findByMerchantOwnerEmailIgnoreCase(email)
+                .map(UserPersistenceAssembler::toDomainFromPersistence).or(() -> findByEmail(email));
+    }
+
+    @Override
     public List<User> findAll() {
         return userPersistenceRepository.findAll().stream().map(UserPersistenceAssembler::toDomainFromPersistence).toList();
     }
@@ -49,6 +55,7 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public boolean existsByEmail(String email) {
-        return userPersistenceRepository.existsByEmail(email);
+        return userPersistenceRepository.existsByEmailIgnoreCase(email)
+                || userPersistenceRepository.existsByMerchantOwnerEmailIgnoreCase(email);
     }
 }

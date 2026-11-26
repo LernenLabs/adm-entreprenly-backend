@@ -5,6 +5,7 @@ import online.entreprenly.platform.shared.domain.model.aggregates.AbstractDomain
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,6 +20,10 @@ public class User extends AbstractDomainAggregateRoot<User> {
     private Long id;
     @Setter
     private String email;
+    @Setter
+    private String merchantOwnerEmail;
+    @Setter
+    private Instant emailVerifiedAt;
     @Setter
     private String password;
     @Setter
@@ -64,5 +69,9 @@ public class User extends AbstractDomainAggregateRoot<User> {
         var validatedRoleSet = Role.validateRoleSet(roles);
         this.roles.addAll(validatedRoleSet);
         return this;
+    }
+
+    public String ownerEmail() {
+        return merchantOwnerEmail == null ? email : merchantOwnerEmail;
     }
 }

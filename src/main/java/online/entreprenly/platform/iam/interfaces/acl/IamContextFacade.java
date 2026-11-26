@@ -31,4 +31,8 @@ public interface IamContextFacade {
      * @return email, or an empty string when user is not found
      */
     String fetchEmailByUserId(Long userId);
+
+    String fetchOwnerEmailByUserId(Long userId);
+
+    Long fetchUserIdByOwnerEmail(String email);
 }

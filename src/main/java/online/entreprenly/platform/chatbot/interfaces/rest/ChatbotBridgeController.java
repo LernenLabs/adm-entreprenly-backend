@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -104,7 +106,8 @@ public class ChatbotBridgeController {
         if (!subscriptionGuard.canAccess(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        String email = authentication.getName();
+        String email = authentication.getPrincipal() instanceof UserDetails principal
+                ? UserDetailsImpl.ownerEmail(principal) : authentication.getName();
         boolean connected = bridgeState.isConnected(email);
         String qr = bridgeState.getQr(email);
         if (!connected && qr == null) {
@@ -120,7 +123,8 @@ public class ChatbotBridgeController {
         if (!subscriptionGuard.canAccess(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        String email = authentication.getName();
+        String email = authentication.getPrincipal() instanceof UserDetails principal
+                ? UserDetailsImpl.ownerEmail(principal) : authentication.getName();
         bridgeState.clear(email);
         notifyBridgeDisconnect(email);
         return ResponseEntity.noContent().build();

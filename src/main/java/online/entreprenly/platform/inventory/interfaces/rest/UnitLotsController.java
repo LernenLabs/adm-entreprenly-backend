@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,7 +69,7 @@ public class UnitLotsController {
     public ResponseEntity<?> createUnitLot(@AuthenticationPrincipal UserDetails userDetails,
                                            @Valid @RequestBody CreateUnitLotResource resource) {
         var command = CreateUnitLotCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), resource);
+                UserDetailsImpl.ownerEmail(userDetails), resource);
         var result = unitLotCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, UnitLotResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
@@ -83,7 +84,7 @@ public class UnitLotsController {
     @ApiResponse(responseCode = "200", description = "Unit lots found")
     public ResponseEntity<List<UnitLotResource>> getAllUnitLots(
             @AuthenticationPrincipal UserDetails userDetails) {
-        var resources = unitLotQueryService.handle(new GetAllUnitLotsQuery(userDetails.getUsername())).stream()
+        var resources = unitLotQueryService.handle(new GetAllUnitLotsQuery(UserDetailsImpl.ownerEmail(userDetails))).stream()
                 .map(UnitLotResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
@@ -102,7 +103,7 @@ public class UnitLotsController {
     })
     public ResponseEntity<UnitLotResource> getUnitLotById(@AuthenticationPrincipal UserDetails userDetails,
                                                           @PathVariable Long unitLotId) {
-        return unitLotQueryService.handle(new GetUnitLotByIdQuery(userDetails.getUsername(), unitLotId))
+        return unitLotQueryService.handle(new GetUnitLotByIdQuery(UserDetailsImpl.ownerEmail(userDetails), unitLotId))
                 .map(UnitLotResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -124,7 +125,7 @@ public class UnitLotsController {
                                            @PathVariable Long unitLotId,
                                            @Valid @RequestBody UpdateUnitLotResource resource) {
         var command = UpdateUnitLotCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), unitLotId, resource);
+                UserDetailsImpl.ownerEmail(userDetails), unitLotId, resource);
         var result = unitLotCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, UnitLotResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
@@ -142,7 +143,7 @@ public class UnitLotsController {
     })
     public ResponseEntity<?> deleteUnitLot(@AuthenticationPrincipal UserDetails userDetails,
                                            @PathVariable Long unitLotId) {
-        var result = unitLotCommandService.handle(new DeleteUnitLotCommand(userDetails.getUsername(), unitLotId));
+        var result = unitLotCommandService.handle(new DeleteUnitLotCommand(UserDetailsImpl.ownerEmail(userDetails), unitLotId));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, id -> null, HttpStatus.NO_CONTENT);
     }

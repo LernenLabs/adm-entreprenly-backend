@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -56,7 +57,7 @@ public class DeviceTokensController {
     public ResponseEntity<?> registerDeviceToken(@AuthenticationPrincipal UserDetails userDetails,
                                                  @Valid @RequestBody RegisterDeviceTokenResource resource) {
         var command = RegisterDeviceTokenCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), resource);
+                UserDetailsImpl.ownerEmail(userDetails), resource);
         var result = deviceTokenCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, DeviceTokenResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
@@ -76,7 +77,7 @@ public class DeviceTokensController {
     public ResponseEntity<?> unregisterDeviceToken(@AuthenticationPrincipal UserDetails userDetails,
                                                    @RequestParam("token") String token) {
         var result = deviceTokenCommandService.handle(
-                new UnregisterDeviceTokenCommand(userDetails.getUsername(), token));
+                new UnregisterDeviceTokenCommand(UserDetailsImpl.ownerEmail(userDetails), token));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, removed -> null, HttpStatus.NO_CONTENT);
     }

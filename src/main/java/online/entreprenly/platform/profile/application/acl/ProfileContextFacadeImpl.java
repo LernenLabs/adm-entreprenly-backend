@@ -32,7 +32,7 @@ public class ProfileContextFacadeImpl implements ProfileContextFacade {
         if (ownerEmail == null || ownerEmail.isBlank()) {
             return defaults;
         }
-        Long userId = iamContextFacade.fetchUserIdByEmail(ownerEmail);
+        Long userId = iamContextFacade.fetchUserIdByOwnerEmail(ownerEmail);
         if (userId == null || userId == 0L) {
             return defaults;
         }
