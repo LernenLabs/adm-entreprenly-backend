@@ -84,7 +84,8 @@ public class UserCommandServiceImpl implements UserCommandService {
         if (user.isEmpty()) {
             return Result.failure(ApplicationError.notFound("User", command.email()));
         }
-        if (!hashingService.matches(command.currentPassword(), user.get().getPassword())) {
+        if (command.currentPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72
+                || !hashingService.matches(command.currentPassword(), user.get().getPassword())) {
             return Result.failure(ApplicationError.validationError("currentPassword", "Current password is incorrect"));
         }
         var session = tokenService.activeSessionId(command.token(), user.get());

@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,7 +69,7 @@ public class WeightProductsController {
     public ResponseEntity<?> createWeightProduct(@AuthenticationPrincipal UserDetails userDetails,
                                                  @Valid @RequestBody CreateWeightProductResource resource) {
         var command = CreateWeightProductCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), resource);
+                UserDetailsImpl.ownerEmail(userDetails), resource);
         var result = weightProductCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, WeightProductResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
@@ -83,7 +84,7 @@ public class WeightProductsController {
     @ApiResponse(responseCode = "200", description = "Weight products found")
     public ResponseEntity<List<WeightProductResource>> getAllWeightProducts(
             @AuthenticationPrincipal UserDetails userDetails) {
-        var resources = weightProductQueryService.handle(new GetAllWeightProductsQuery(userDetails.getUsername()))
+        var resources = weightProductQueryService.handle(new GetAllWeightProductsQuery(UserDetailsImpl.ownerEmail(userDetails)))
                 .stream()
                 .map(WeightProductResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -103,7 +104,7 @@ public class WeightProductsController {
     })
     public ResponseEntity<WeightProductResource> getWeightProductById(@AuthenticationPrincipal UserDetails userDetails,
                                                                       @PathVariable Long weightProductId) {
-        return weightProductQueryService.handle(new GetWeightProductByIdQuery(userDetails.getUsername(), weightProductId))
+        return weightProductQueryService.handle(new GetWeightProductByIdQuery(UserDetailsImpl.ownerEmail(userDetails), weightProductId))
                 .map(WeightProductResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -125,7 +126,7 @@ public class WeightProductsController {
                                                  @PathVariable Long weightProductId,
                                                  @Valid @RequestBody UpdateWeightProductResource resource) {
         var command = UpdateWeightProductCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), weightProductId, resource);
+                UserDetailsImpl.ownerEmail(userDetails), weightProductId, resource);
         var result = weightProductCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, WeightProductResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
@@ -144,7 +145,7 @@ public class WeightProductsController {
     public ResponseEntity<?> deleteWeightProduct(@AuthenticationPrincipal UserDetails userDetails,
                                                  @PathVariable Long weightProductId) {
         var result = weightProductCommandService.handle(
-                new DeleteWeightProductCommand(userDetails.getUsername(), weightProductId));
+                new DeleteWeightProductCommand(UserDetailsImpl.ownerEmail(userDetails), weightProductId));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, id -> null, HttpStatus.NO_CONTENT);
     }

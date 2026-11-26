@@ -21,7 +21,7 @@ public class IamSellerEmailResolver implements SellerEmailResolver {
         if (sellerId == null) {
             return Optional.empty();
         }
-        var email = iamContextFacade.fetchEmailByUserId(sellerId);
+        var email = iamContextFacade.fetchOwnerEmailByUserId(sellerId);
         return email.isBlank() ? Optional.empty() : Optional.of(email);
     }
 
@@ -30,7 +30,7 @@ public class IamSellerEmailResolver implements SellerEmailResolver {
         if (email == null || email.isBlank()) {
             return Optional.empty();
         }
-        var sellerId = iamContextFacade.fetchUserIdByEmail(email);
+        var sellerId = iamContextFacade.fetchUserIdByOwnerEmail(email);
         return sellerId == 0L ? Optional.empty() : Optional.of(sellerId);
     }
 }

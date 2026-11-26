@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -21,6 +22,11 @@ public class UserPersistenceEntity extends AuditableAbstractPersistenceEntity {
 
     @Column(name = "email", nullable = false, unique = true, length = 120)
     private String email;
+
+    @Column(length = 120, unique = true)
+    private String merchantOwnerEmail;
+
+    private Instant emailVerifiedAt;
 
     @Column(name = "password", nullable = false, length = 120)
     private String password;

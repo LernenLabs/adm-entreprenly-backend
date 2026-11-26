@@ -6,6 +6,8 @@ import online.entreprenly.platform.iam.domain.model.commands.SignUpCommand;
 import online.entreprenly.platform.iam.domain.model.queries.GetUserByEmailQuery;
 import online.entreprenly.platform.iam.domain.model.queries.GetUserByIdQuery;
 import online.entreprenly.platform.iam.interfaces.acl.IamContextFacade;
+import online.entreprenly.platform.iam.domain.model.aggregates.User;
+import online.entreprenly.platform.iam.domain.repositories.UserRepository;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.stereotype.Service;
 
@@ -19,10 +21,12 @@ import org.springframework.stereotype.Service;
 public class IamContextFacadeImpl implements IamContextFacade {
     private final UserCommandService userCommandService;
     private final UserQueryService userQueryService;
+    private final UserRepository users;
 
-    public IamContextFacadeImpl(UserCommandService userCommandService, UserQueryService userQueryService) {
+    public IamContextFacadeImpl(UserCommandService userCommandService, UserQueryService userQueryService, UserRepository users) {
         this.userCommandService = userCommandService;
         this.userQueryService = userQueryService;
+        this.users = users;
     }
 
     /**
@@ -62,5 +66,14 @@ public class IamContextFacadeImpl implements IamContextFacade {
         var getUserByIdQuery = new GetUserByIdQuery(userId);
         var user = userQueryService.handle(getUserByIdQuery);
         return user.isEmpty() ? Strings.EMPTY : user.get().getEmail();
+    }
+    @Override
+    public String fetchOwnerEmailByUserId(Long userId) {
+        return users.findById(userId).map(User::ownerEmail).orElse("");
+    }
+
+    @Override
+    public Long fetchUserIdByOwnerEmail(String email) {
+        return users.findByOwnerEmail(email).map(User::getId).orElse(0L);
     }
 }

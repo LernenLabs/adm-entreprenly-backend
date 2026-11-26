@@ -125,3 +125,11 @@ currently deployed on Render + Supabase.
 ## License
 
 See [LICENSE](LICENSE).
+
+## Profile verification
+
+Configure the following in the backend service on Render.
+
+- **SMS:** Register an Android phone with an SMS-enabled SIM using [SMSGate Cloud Server](https://docs.sms-gate.app/getting-started/public-cloud-server/). Set `SMSGATE_USERNAME` and `SMSGATE_PASSWORD` in Render. Cloud mode uses the default URL. For a private server, set `SMSGATE_MESSAGES_URL` to its public HTTPS message endpoint (typically ending in `/api/3rdparty/v1/messages`). Keep the phone online with SMSGate running. A queued message still depends on the phone and carrier for delivery. The app accepts Peruvian mobile numbers with or without `+51`; use international format for other countries.
+- **Email change:** Reuse the [password recovery environment variables](README-password-reset.md) `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `PUBLIC_API_URL`. Set `PUBLIC_API_URL` to the public HTTPS origin of the API. Changing the login email retains the original merchant data key and invalidates existing sessions. The original address remains reserved for the merchant.
+- **Local AV2:** Continue to use the test inbox specified by `profile.verification.inbox`. The AV2 profile simulates both verification channels.

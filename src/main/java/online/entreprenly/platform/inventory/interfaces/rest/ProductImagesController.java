@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,7 +84,7 @@ public class ProductImagesController {
             return ResponseEntity.badRequest().body(new ErrorResource("INVALID_IMAGE", ex.getMessage()));
         }
         var key = UUID.randomUUID();
-        images.save(new ProductImagePersistenceEntity(key, userDetails.getUsername(), mimeType, bytes, Instant.now()));
+        images.save(new ProductImagePersistenceEntity(key, UserDetailsImpl.ownerEmail(userDetails), mimeType, bytes, Instant.now()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ProductImageResource(PATH + key, mimeType, bytes.length));
     }

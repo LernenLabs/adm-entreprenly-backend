@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.function.BooleanSupplier;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import online.entreprenly.platform.shared.interfaces.rest.resources.ErrorResource;
@@ -29,11 +30,13 @@ public class VerificationChallenges {
     private final Environment environment;
     private final Path inbox;
     private final String secret;
+    private final SmsGateDelivery sms;
 
-    public VerificationChallenges(VerificationChallengeRepository challenges, Environment environment,
+    public VerificationChallenges(VerificationChallengeRepository challenges, Environment environment, SmsGateDelivery sms,
             @Value("${profile.verification.inbox:target/av2-inbox}") String inbox,
             @Value("${authorization.jwt.secret}") String secret) {
         this.challenges = challenges;
+        this.sms = sms;
         this.environment = environment;
         this.inbox = Path.of(inbox);
         this.secret = secret;
@@ -63,6 +66,44 @@ public class VerificationChallenges {
         return ResponseEntity.accepted().build();
     }
 
+    public ResponseEntity<?> issueDeliveredEmail(String id, String destination, String code, BooleanSupplier deliver) {
+        return issueDelivered(id, destination, code, deliver, "Email delivery is unavailable.");
+    }
+
+    public ResponseEntity<?> issueSms(String id, String phone, String code) {
+        if (!phone.matches("[+][1-9][0-9]{6,14}")) {
+            return error(HttpStatus.BAD_REQUEST, "Enter a valid international phone number.");
+        }
+        if (deliveryAvailable()) return issue(id, phone, code, code);
+        return issueDelivered(id, phone, code, () -> sms.send(phone, code, LIFETIME), "SMS delivery is unavailable.");
+    }
+
+    private ResponseEntity<?> issueDelivered(String id, String destination, String code, BooleanSupplier deliver,
+            String unavailableMessage) {
+        var now = Instant.now();
+        if (tooSoon(id, now)) return resendError();
+        if (!deliver.getAsBoolean()) return error(HttpStatus.SERVICE_UNAVAILABLE, unavailableMessage);
+        challenges.save(new VerificationChallenge(id, destination, digest(id, code), now));
+        return ResponseEntity.accepted().build();
+    }
+
+    private boolean tooSoon(String id, Instant now) {
+        return challenges.findById(id).filter(previous -> now.isBefore(previous.issuedAt.plus(RESEND_DELAY))).isPresent();
+    }
+
+    private static ResponseEntity<ErrorResource> resendError() {
+        return error(HttpStatus.TOO_MANY_REQUESTS, "Wait 30 seconds before requesting another code or link.");
+    }
+
+    private static boolean expired(VerificationChallenge challenge) {
+        return challenge == null || !Instant.now().isBefore(challenge.issuedAt.plus(LIFETIME))
+                || challenge.attempts >= MAX_ATTEMPTS;
+    }
+
+    private static Check expiredCheck() {
+        return new Check(null, error(HttpStatus.GONE, "The code or link expired. Request another one."));
+    }
+
     /** Schedules external delivery after commit, keeping provider latency out of the public response. */
     public void issueEmail(String id, String destination, String code, Runnable deliver) {
         var now = Instant.now();
@@ -90,10 +131,7 @@ public class VerificationChallenges {
 
     private Check check(String id, String destination, String code, boolean countFailure) {
         var challenge = challenges.findById(id).orElse(null);
-        if (challenge == null || !Instant.now().isBefore(challenge.issuedAt.plus(LIFETIME))
-                || challenge.attempts >= MAX_ATTEMPTS) {
-            return new Check(null, error(HttpStatus.GONE, "The code or link expired. Request another one."));
-        }
+        if (expired(challenge) || challenge.digest == null) return expiredCheck();
         if ((destination != null && !destination.equals(challenge.destination))
                 || !MessageDigest.isEqual(HexFormat.of().parseHex(challenge.digest), HexFormat.of().parseHex(digest(id, code)))) {
             if (countFailure) challenge.attempts++;

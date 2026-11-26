@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,7 +69,7 @@ public class WeightLotsController {
     public ResponseEntity<?> createWeightLot(@AuthenticationPrincipal UserDetails userDetails,
                                              @Valid @RequestBody CreateWeightLotResource resource) {
         var command = CreateWeightLotCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), resource);
+                UserDetailsImpl.ownerEmail(userDetails), resource);
         var result = weightLotCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, WeightLotResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.CREATED);
@@ -83,7 +84,7 @@ public class WeightLotsController {
     @ApiResponse(responseCode = "200", description = "Weight lots found")
     public ResponseEntity<List<WeightLotResource>> getAllWeightLots(
             @AuthenticationPrincipal UserDetails userDetails) {
-        var resources = weightLotQueryService.handle(new GetAllWeightLotsQuery(userDetails.getUsername())).stream()
+        var resources = weightLotQueryService.handle(new GetAllWeightLotsQuery(UserDetailsImpl.ownerEmail(userDetails))).stream()
                 .map(WeightLotResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
@@ -102,7 +103,7 @@ public class WeightLotsController {
     })
     public ResponseEntity<WeightLotResource> getWeightLotById(@AuthenticationPrincipal UserDetails userDetails,
                                                               @PathVariable Long weightLotId) {
-        return weightLotQueryService.handle(new GetWeightLotByIdQuery(userDetails.getUsername(), weightLotId))
+        return weightLotQueryService.handle(new GetWeightLotByIdQuery(UserDetailsImpl.ownerEmail(userDetails), weightLotId))
                 .map(WeightLotResourceFromEntityAssembler::toResourceFromEntity)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -124,7 +125,7 @@ public class WeightLotsController {
                                              @PathVariable Long weightLotId,
                                              @Valid @RequestBody UpdateWeightLotResource resource) {
         var command = UpdateWeightLotCommandFromResourceAssembler.toCommandFromResource(
-                userDetails.getUsername(), weightLotId, resource);
+                UserDetailsImpl.ownerEmail(userDetails), weightLotId, resource);
         var result = weightLotCommandService.handle(command);
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, WeightLotResourceFromEntityAssembler::toResourceFromEntity, HttpStatus.OK);
@@ -142,7 +143,7 @@ public class WeightLotsController {
     })
     public ResponseEntity<?> deleteWeightLot(@AuthenticationPrincipal UserDetails userDetails,
                                              @PathVariable Long weightLotId) {
-        var result = weightLotCommandService.handle(new DeleteWeightLotCommand(userDetails.getUsername(), weightLotId));
+        var result = weightLotCommandService.handle(new DeleteWeightLotCommand(UserDetailsImpl.ownerEmail(userDetails), weightLotId));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result, id -> null, HttpStatus.NO_CONTENT);
     }

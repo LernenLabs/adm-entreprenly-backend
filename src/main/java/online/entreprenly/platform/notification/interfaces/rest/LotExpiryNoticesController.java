@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import online.entreprenly.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -51,7 +52,7 @@ public class LotExpiryNoticesController {
     public ResponseEntity<LotExpiryDispatchResource> dispatch(@AuthenticationPrincipal UserDetails userDetails,
                                                               @RequestParam(defaultValue = "false") boolean force) {
         var summary = lotExpiryNoticeCommandService.handle(
-                new DispatchLotExpiryNoticesCommand(userDetails.getUsername(), force, Instant.now()));
+                new DispatchLotExpiryNoticesCommand(UserDetailsImpl.ownerEmail(userDetails), force, Instant.now()));
         return ResponseEntity.ok(LotExpiryDispatchResourceFromSummaryAssembler.toResourceFromSummary(summary));
     }
 }

@@ -13,6 +13,7 @@ public interface UserRepository {
 
     Optional<User> findByEmail(String email);
     Optional<User> findByEmailForUpdate(String email);
+    Optional<User> findByOwnerEmail(String email);
 
     List<User> findAll();
 
