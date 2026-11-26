@@ -39,7 +39,8 @@ public final class ProfilePersistenceAssembler {
                 entity.getRole(),
                 entity.getPlan(),
                 preferences,
-                notificationSettings);
+                notificationSettings,
+                entity.getPhoneVerifiedAt());
         return profile;
     }
 
@@ -53,6 +54,7 @@ public final class ProfilePersistenceAssembler {
         entity.setFirstName(profile.getFirstName());
         entity.setLastName(profile.getLastName());
         entity.setPhone(profile.getPhone());
+        entity.setPhoneVerifiedAt(profile.getPhoneVerifiedAt());
         entity.setAvatarUrl(profile.getAvatarUrl());
         entity.setBiography(profile.getBiography());
         entity.setRole(profile.getRole());

@@ -22,6 +22,12 @@ public record ProfileResource(
     @Schema(description = "Phone number", example = "+51 999 888 777", nullable = true)
     String phone,
 
+    @Schema(description = "Whether the current phone was confirmed by SMS")
+    boolean phoneVerified,
+
+    @Schema(description = "Whether the current login email was confirmed")
+    boolean emailVerified,
+
     @Schema(description = "Avatar URL", example = "https://cdn.entreprenly.online/avatars/1.png", nullable = true)
     String avatarUrl,
 

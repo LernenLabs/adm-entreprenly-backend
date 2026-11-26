@@ -33,6 +33,8 @@ public class ProfilePersistenceEntity extends AuditableAbstractPersistenceEntity
     @Column(name = "phone", length = 30)
     private String phone;
 
+    private java.time.Instant phoneVerifiedAt;
+
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 

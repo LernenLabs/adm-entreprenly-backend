@@ -32,13 +32,16 @@ public class ProfileVerificationController {
     private final ProfilePersistenceRepository profiles;
     private final ProfileAvatarRepository avatars;
     private final VerificationChallenges verification;
+    private final ProfileResourceFromEntityAssembler resources;
 
     public ProfileVerificationController(UserRepository users, ProfilePersistenceRepository profiles,
-            ProfileAvatarRepository avatars, VerificationChallenges verification) {
+            ProfileAvatarRepository avatars, VerificationChallenges verification,
+            ProfileResourceFromEntityAssembler resources) {
         this.users = users;
         this.profiles = profiles;
         this.avatars = avatars;
         this.verification = verification;
+        this.resources = resources;
     }
 
     @PostMapping(value = "/profiles/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -78,9 +81,14 @@ public class ProfileVerificationController {
     @Transactional
     public ResponseEntity<?> requestPhone(@PathVariable long id, @Valid @RequestBody PhoneRequest request,
             Authentication authentication) {
-        if (ownedProfile(id, authentication) == null) return profileNotFound();
+        var profile = ownedProfile(id, authentication);
+        if (profile == null) return profileNotFound();
+        var number = smsNumber(request.phone());
+        if (profile.getPhoneVerifiedAt() != null && number.equals(profile.getPhone())) {
+            return VerificationChallenges.error(HttpStatus.CONFLICT, "This phone number is already verified.");
+        }
         var code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
-        return verification.issueSms("phone:" + id, smsNumber(request.phone()), code);
+        return verification.issueSms("phone:" + id, number, code);
     }
 
     @PostMapping("/profiles/{id}/phone-verifications/confirm")
@@ -93,6 +101,7 @@ public class ProfileVerificationController {
         var check = verification.check(key, smsNumber(request.phone()), request.code());
         if (check.error() != null) return check.error();
         profile.setPhone(check.destination());
+        profile.setPhoneVerifiedAt(java.time.Instant.now());
         verification.consume(key);
         return ResponseEntity.ok(toResource(profile));
     }
@@ -111,8 +120,8 @@ public class ProfileVerificationController {
         return VerificationChallenges.error(HttpStatus.NOT_FOUND, "Profile not found.");
     }
 
-    private static ProfileResource toResource(ProfilePersistenceEntity entity) {
-        return ProfileResourceFromEntityAssembler.toResourceFromEntity(
+    private ProfileResource toResource(ProfilePersistenceEntity entity) {
+        return resources.toResourceFromEntity(
                 ProfilePersistenceAssembler.toDomainFromPersistence(entity));
     }
 
