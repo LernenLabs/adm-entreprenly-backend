@@ -186,10 +186,10 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
         var conversationId = conversation.getId();
 
         
-        var orderLine = productReplyComposer.detectOrder(content, catalog);
-        if (orderLine.isPresent()) {
+        var orderLines = productReplyComposer.detectOrders(content, catalog);
+        if (!orderLines.isEmpty()) {
             lastProductByConversation.remove(conversationId);
-            var draftReply = registerDraftOrder(conversation, orderLine.get());
+            var draftReply = registerDraftOrder(conversation, orderLines);
             // "2 cocas a Av. Perú 124": the same message already says where to deliver it.
             var address = addressIn(content);
             var draft = findPendingOrder(conversationId);
@@ -212,7 +212,7 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
             var contextual = productReplyComposer.detectOrder(content, catalog, context);
             if (contextual.isPresent()) {
                 lastProductByConversation.remove(conversationId);
-                return registerDraftOrder(conversation, contextual.get());
+                return registerDraftOrder(conversation, List.of(contextual.get()));
             }
         }
 
@@ -285,16 +285,26 @@ public class ChatbotConversationServiceImpl implements ChatbotConversationServic
                 .findFirst();
     }
 
-    private String registerDraftOrder(Conversation conversation, OrderItem line) {
-        var command = new CreateChatOrderCommand(conversation.getId(), null, List.of(line),
+    private String registerDraftOrder(Conversation conversation, List<OrderItem> lines) {
+        var command = new CreateChatOrderCommand(conversation.getId(), null, lines,
                 null, "Por confirmar", OrderStatus.PENDING);
         var result = chatOrderCommandService.handle(command);
         var number = result.toOptional().map(ChatOrder::getOrderNumber).orElse("");
-        double total = Math.round(line.unitPrice() * line.quantity() * 100.0) / 100.0;
-        
+        if (lines.size() == 1) {
+            var line = lines.get(0);
+            return String.format(java.util.Locale.US,
+                    "Anotado tu pedido %s: %d x %s = S/%.2f. ¿A qué dirección te lo enviamos?",
+                    number, line.quantity(), line.productName(), line.subtotal());
+        }
+        var detail = new StringBuilder();
+        for (var line : lines) {
+            detail.append(String.format(java.util.Locale.US, "• %d x %s = S/%.2f\n",
+                    line.quantity(), line.productName(), line.subtotal()));
+        }
+        double total = Math.round(lines.stream().mapToDouble(OrderItem::subtotal).sum() * 100.0) / 100.0;
         return String.format(java.util.Locale.US,
-                "Anotado tu pedido %s: %d x %s = S/%.2f. ¿A qué dirección te lo enviamos?",
-                number, line.quantity(), line.productName(), total);
+                "Anotado tu pedido %s:\n%sTotal: S/%.2f. ¿A qué dirección te lo enviamos?",
+                number, detail, total);
     }
 
     private String confirmDelivery(Conversation conversation, ChatOrder order, String address) {
