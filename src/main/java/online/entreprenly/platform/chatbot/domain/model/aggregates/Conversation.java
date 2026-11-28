@@ -11,6 +11,8 @@ import java.time.Instant;
 @Getter
 public class Conversation extends AbstractDomainAggregateRoot<Conversation> {
 
+    public static final int LAST_MESSAGE_MAX_LENGTH = 500;
+
     @Setter
     private Long id;
     private Long sellerId;
@@ -37,6 +39,9 @@ public class Conversation extends AbstractDomainAggregateRoot<Conversation> {
 
     
     public void registerLastMessage(String content, String time) {
+        if (content != null && content.codePointCount(0, content.length()) > LAST_MESSAGE_MAX_LENGTH) {
+            content = content.substring(0, content.offsetByCodePoints(0, LAST_MESSAGE_MAX_LENGTH - 1)) + "…";
+        }
         this.lastMessage = content;
         this.lastMessageTime = time;
     }
