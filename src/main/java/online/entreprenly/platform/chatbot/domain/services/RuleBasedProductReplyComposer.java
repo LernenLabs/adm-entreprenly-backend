@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,6 +40,17 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
             "comprar", "pedir", "pedido", "llevar", "llevo", "ponme", "mandame", "enviame", "envieme", "traeme",
             "separame", "vendeme", "vender", "me das", "me da ", "me vendes", "anota", "agrega", "busco",
             "kilos", "kilo", "kg", "unidad", "unidades", "docena", "paquete", "botella", "lata"};
+
+    /**
+     * Where one ordered product ends and the next begins: new lines, semicolons, commas that are not
+     * decimals ("1,5 kilos") and an " y " followed by another quantity ("2 cocas y 3 aguas").
+     */
+    private static final Pattern ORDER_SEPARATOR = Pattern.compile(
+            "[\\r\\n;]+|,(?!\\d)|\\s+y\\s+(?=\\d|(?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|medio|media)\\b)",
+            Pattern.CASE_INSENSITIVE);
+
+    /** List markers a client or the shop app puts before each product line. */
+    private static final Pattern BULLET = Pattern.compile("^\\s*[-*•]\\s*");
 
     /** Sizes belong to the product: "Coca Cola de 500 ml" is one bottle, not 500. */
     private static final Pattern SIZE = Pattern.compile("(?<![\\w.,])(\\d+(?:[.,]\\d+)?)\\s*(ml|lt|l|litros?|gr|g)(?![\\w])");
@@ -158,6 +170,25 @@ public class RuleBasedProductReplyComposer implements ProductReplyComposer {
             return Optional.empty();
         }
         return Optional.of(new OrderItem(product.name(), (int) Math.round(qty), product.price()));
+    }
+
+    @Override
+    public List<OrderItem> detectOrders(String incomingContent, List<CatalogProduct> catalog) {
+        if (incomingContent == null || incomingContent.isBlank()) {
+            return List.of();
+        }
+        // Same product on several lines adds up; insertion order keeps the client's order.
+        var byProduct = new LinkedHashMap<String, OrderItem>();
+        for (var segment : ORDER_SEPARATOR.split(incomingContent)) {
+            var line = BULLET.matcher(segment).replaceFirst("");
+            detectOrder(line, catalog).ifPresent(item -> byProduct.merge(item.productName(), item,
+                    (first, more) -> new OrderItem(first.productName(), first.quantity() + more.quantity(),
+                            first.unitPrice())));
+        }
+        if (byProduct.isEmpty()) {
+            return detectOrder(incomingContent, catalog).map(List::of).orElseGet(List::of);
+        }
+        return List.copyOf(byProduct.values());
     }
 
     @Override

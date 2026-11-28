@@ -18,6 +18,11 @@ public interface ProductReplyComposer {
     
     Optional<OrderItem> detectOrder(String incomingContent, List<CatalogProduct> catalog, CatalogProduct contextProduct);
 
+    /** Every product a message orders, one per line ("- 1 unidad de Agua", "- 2 unidades de Atún"). */
+    default List<OrderItem> detectOrders(String incomingContent, List<CatalogProduct> catalog) {
+        return detectOrder(incomingContent, catalog).map(List::of).orElseGet(List::of);
+    }
+
     
     Optional<CatalogProduct> matchProduct(String incomingContent, List<CatalogProduct> catalog);
 
