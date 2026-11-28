@@ -1,6 +1,7 @@
 package online.entreprenly.platform.chatbot.domain.services;
 
 import online.entreprenly.platform.chatbot.domain.model.valueobjects.CatalogProduct;
+import online.entreprenly.platform.chatbot.domain.model.valueobjects.OrderItem;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -167,6 +168,54 @@ class RuleBasedProductReplyComposerTest {
         assertThat(composer.compose("1 gaseosa", SHOP).orElseThrow())
                 .contains("Coca-Cola 500ml").doesNotContain("Leche");
         assertThat(composer.compose("que frutas tienes", SHOP).orElseThrow()).contains("Manzana Roja");
+    }
+
+    private static final List<CatalogProduct> MARKET = List.of(
+            new CatalogProduct("Agua San Luis", 1.50, false, 30.0),
+            new CatalogProduct("Atún en aceite", 6.20, false, 15.0),
+            new CatalogProduct("Café Altomayo", 9.40, false, 10.0),
+            new CatalogProduct("Coca Cola 500ml", 3.50, false, 20.0));
+
+    private static List<String> lines(List<OrderItem> items) {
+        return items.stream().map(item -> item.quantity() + " x " + item.productName()).toList();
+    }
+
+    @Test
+    @DisplayName("reads every line of the order the shop app sends")
+    void detectsEveryLineOfAnOrder() {
+        var message = "Hola, quisiera pedir lo siguiente:\n- 1 unidad de Agua San Luis\n"
+                + "- 2 unidades de Atún en aceite\n- 1 unidad de Café\nTotal estimado: S/ 28.80.";
+        assertThat(lines(composer.detectOrders(message, MARKET)))
+                .containsExactly("1 x Agua San Luis", "2 x Atún en aceite", "1 x Café Altomayo");
+    }
+
+    @Test
+    @DisplayName("splits several products written in one sentence")
+    void detectsSeveralProductsInOneSentence() {
+        assertThat(lines(composer.detectOrders("dame 2 cocas y 3 aguas", MARKET)))
+                .containsExactly("2 x Coca Cola 500ml", "3 x Agua San Luis");
+        assertThat(lines(composer.detectOrders("quiero 2 coca cola, 1 cafe altomayo", MARKET)))
+                .containsExactly("2 x Coca Cola 500ml", "1 x Café Altomayo");
+    }
+
+    @Test
+    @DisplayName("adds up a product repeated on several lines")
+    void addsUpRepeatedProducts() {
+        assertThat(lines(composer.detectOrders("- 1 unidad de Agua San Luis\n- 2 unidades de Agua San Luis", MARKET)))
+                .containsExactly("3 x Agua San Luis");
+    }
+
+    @Test
+    @DisplayName("a single product order is read as before")
+    void singleProductOrderUnchanged() {
+        assertThat(lines(composer.detectOrders("quiero 2 oreos", STORE))).containsExactly("2 x Galletas Oreo");
+        assertThat(lines(composer.detectOrders("3 Leches Glorias 2L", SHOP))).containsExactly("3 x Leche Gloria 2L");
+    }
+
+    @Test
+    @DisplayName("a price question about several products is not an order")
+    void priceQuestionIsNotAnOrder() {
+        assertThat(composer.detectOrders("Agua San Luis y Coca Cola, cuanto cuestan?", MARKET)).isEmpty();
     }
 
     @Test

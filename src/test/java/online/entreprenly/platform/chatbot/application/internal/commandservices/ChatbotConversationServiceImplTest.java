@@ -262,6 +262,28 @@ class ChatbotConversationServiceImplTest {
     }
 
     @Test
+    @DisplayName("an order of several lines becomes one order with every product")
+    void registersEveryProductOfAMultiLineOrder() {
+        ProductCatalogService catalog = ownerEmail -> List.of(
+                new CatalogProduct("Agua San Luis", 1.50, false, 30.0),
+                new CatalogProduct("Atún en aceite", 6.20, false, 15.0),
+                new CatalogProduct("Café Altomayo", 9.40, false, 10.0));
+        var service = service(catalog, new StubSellerEmailResolver(sellerId -> Optional.empty()));
+        var phone = "+51 955 000 007";
+
+        var reply = say(service, phone, "Hola, quisiera pedir lo siguiente:\n- 1 unidad de Agua San Luis\n"
+                + "- 2 unidades de Atún en aceite\n- 1 unidad de Café\nTotal estimado: S/ 28.80.");
+
+        assertThat(reply).contains("• 1 x Agua San Luis = S/1.50").contains("• 2 x Atún en aceite = S/12.40")
+                .contains("• 1 x Café Altomayo = S/9.40").contains("Total: S/23.30");
+        var convId = conversations.findByClientPhone(phone).orElseThrow().getId();
+        var placed = orders.findByConversationId(convId);
+        assertThat(placed).hasSize(1);
+        assertThat(placed.get(0).getItems()).hasSize(3);
+        assertThat(placed.get(0).getTotal()).isEqualTo(23.30);
+    }
+
+    @Test
     @DisplayName("reminds about the missing address while the client asks about something else")
     void remindsAboutThePendingOrder() {
         var service = shop();
