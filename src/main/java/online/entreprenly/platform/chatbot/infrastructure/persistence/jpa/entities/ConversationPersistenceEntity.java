@@ -1,5 +1,6 @@
 package online.entreprenly.platform.chatbot.infrastructure.persistence.jpa.entities;
 
+import online.entreprenly.platform.chatbot.domain.model.aggregates.Conversation;
 import online.entreprenly.platform.chatbot.domain.model.valueobjects.ConversationStatus;
 import online.entreprenly.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.Column;
@@ -30,7 +31,7 @@ public class ConversationPersistenceEntity extends AuditableAbstractPersistenceE
     @Column(name = "client_name", length = 120)
     private String clientName;
 
-    @Column(name = "last_message", length = 500)
+    @Column(name = "last_message", length = Conversation.LAST_MESSAGE_MAX_LENGTH)
     private String lastMessage;
 
     @Column(name = "last_message_time", length = 20)

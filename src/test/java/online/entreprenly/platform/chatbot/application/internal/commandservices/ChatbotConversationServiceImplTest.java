@@ -91,6 +91,24 @@ class ChatbotConversationServiceImplTest {
     }
 
     @Test
+    void returnsTheFullCatalogReplyAndLimitsTheConversationPreview() {
+        var product = new CatalogProduct("🍎".repeat(550), 4.50, false, 20.0);
+        var service = service(ownerEmail -> List.of(product), noEmail);
+        var phone = "+51987000111";
+
+        var reply = service.handle(new HandleInboundMessageCommand(phone, "Cliente", "Hola", "seller@test.com"))
+                .toOptional().orElseThrow();
+        var conversation = conversations.findByClientPhone(phone).orElseThrow();
+        var preview = conversation.getLastMessage();
+        var content = reply.getContent();
+
+        assertThat(content).contains(product.name());
+        assertThat(messages.findByConversationId(conversation.getId()).get(1).getContent()).isEqualTo(content);
+        assertThat(preview.codePointCount(0, preview.length())).isEqualTo(500);
+        assertThat(preview).isEqualTo(content.substring(0, content.offsetByCodePoints(0, 499)) + "…");
+    }
+
+    @Test
     @DisplayName("reuses an existing conversation for a known phone number")
     void reusesExistingConversation() {
         var service = service(emptyCatalog, noEmail);
